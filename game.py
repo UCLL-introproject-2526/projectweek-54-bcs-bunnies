@@ -21,8 +21,8 @@ def draw (player, elapsed_time):
     pygame.draw.rect(WIN,"red", player)
 
     time_text = FONT.render(f"Time: {round(elapsed_time)}s",1,"white")
+    WIN.blit(time)
 
-    
     pygame.display.update()
 #defining gameplay loop
 def main():

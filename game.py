@@ -38,7 +38,7 @@ def main():
 
     #quit game using X
     while run:
-        clock.tick(80)
+        clock.tick(130)
         elapsed_time = time.time() - start_time
         for event in pygame.event.get():
             if event.type == pygame.QUIT:

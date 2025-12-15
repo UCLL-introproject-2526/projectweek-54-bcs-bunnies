@@ -11,6 +11,7 @@ pygame.display.set_caption('bunnies beta V 1.0')
 
 BG = pygame.transform.scale(pygame.image.load("images/bg.png"), (WIDTH, HEIGHT))
 
+#saving the player characters width and height
 PLAYER_WIDTH = 40
 PLAYER_HEIGHT = 60
 # Using pixels per second for frame-indepent movement
@@ -18,10 +19,14 @@ PLAYER_SPEED = 500
 
 FONT = pygame.font.SysFont("comicsans", 30)
 
+#function making sure that at any given moment any changing
+#element actually changes rather than overlapping with "past" versions of itself
 def draw (player, elapsed_time):
+    #setting the background
     WIN.blit(BG,(0,0))
+    #creating the player character
     pygame.draw.rect(WIN,"red", player)
-
+    #timer specifications
     time_text = FONT.render(f"Time: {round(elapsed_time)}s",1,"white")
 
     WIN.blit(time_text, (10,10))

@@ -1,33 +1,27 @@
 import pygame
 import time
 import random
+import pygame_shaders
 pygame.font.init()
 
 #setting display
 WIDTH,HEIGHT= 1000,800
-WIN= pygame.display.set_mode((WIDTH,HEIGHT))
+screen = pygame.display.set_mode((WIDTH,HEIGHT),pygame.OPENGL )
+display=pygame.Surface(WIDTH,HEIGHT)
 pygame.display.set_caption('bunnies beta V 1.0')
 
-#setting background(temporary)
 BG =pygame.transform.scale(pygame.image.load("images/bg.png"), (WIDTH, HEIGHT))
 
-#saving the player characters width and height
 PLAYER_WIDTH = 40
 PLAYER_HIGHT = 60
-#saving the rate at which the player character moves
 PLAYER_VEL = 5
 
-#timer font
 FONT = pygame.font.SysFont("comicsans",30)
 
-#function making sure that at any given moment any changing
-#element actually changes rather than overlapping with "past" versions of itself
 def draw (player, elapsed_time):
-    #setting the background
     WIN.blit(BG,(0,0))
-    #creating the player character
     pygame.draw.rect(WIN,"red", player)
-    #timer specifications
+
     time_text = FONT.render(f"Time: {round(elapsed_time)}s",1,"white")
     WIN.blit(time_text, (10,10))
 
@@ -46,11 +40,8 @@ def main():
 
     #quit game using X
     while run:
-        #player movement speed
         clock.tick(80)
-        #running timer
         elapsed_time = time.time() - start_time
-        #when x pressed quit game
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
@@ -64,16 +55,9 @@ def main():
         if keys[pygame.K_UP] and player.y - PLAYER_VEL >= 0:
             player.y -= PLAYER_VEL   
         if keys[pygame.K_DOWN] and player.y + PLAYER_VEL + player.height <= HEIGHT:
-            player.y += PLAYER_VEL
-        #looping drawe function so no interlaps               
+            player.y += PLAYER_VEL           
         draw(player, elapsed_time)    
     pygame.quit()
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-

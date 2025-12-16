@@ -1,6 +1,10 @@
 import pygame
 import time
 import random
+import math
+import glob
+import os
+
 
 # Initialize Pygame and Font
 pygame.init()

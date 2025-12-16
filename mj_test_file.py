@@ -25,7 +25,17 @@ class Bunny:
         self.current_surface = self._get_current_surface()
 
     def _load_all_frames(self, target_size, scale_factor):
-        #
+        # We'll support these logical sets; missing sets will gracefully fall back.
+        logical_sets = [
+            ("idle", "right"),
+            ("run", "right"),
+            ("idle", "up"),
+            ("run", "up"),
+            ("idle", "down"),
+            ("run", "down"),
+            # We wont look for "left", we will just flip "right" at runtime
+        ]
+        
 
 
 

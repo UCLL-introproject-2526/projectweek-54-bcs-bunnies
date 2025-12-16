@@ -47,7 +47,11 @@ def main():
 
     #quit game using X
     while run:
+<<<<<<< HEAD
+        clock.tick(130)
+=======
         dt = clock.tick(80) / 1000.0
+>>>>>>> c2e3e83c85c243fb54655918023075857a54c472
         elapsed_time = time.time() - start_time
 
 

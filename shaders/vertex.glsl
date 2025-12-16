@@ -1,15 +1,10 @@
-#version version_number
-in type in_variable_name;
-in type in_variable_name;
+#version 330 core
+layout(location = 0) in vec3 aPos;
+layout(location = 1) in vec2 aTexCoord;
 
-out type out_variable_name;
-  
-uniform type uniform_name;
-  
-void main()
-{
-  // process input(s) and do some weird graphics stuff
-  ...
-  // output processed stuff to output variable
-  out_variable_name = weird_stuff_we_processed;
+out vec2 TexCoord;
+
+void main() {
+    gl_Position = vec4(aPos, 1.0);
+    TexCoord = aTexCoord;
 }

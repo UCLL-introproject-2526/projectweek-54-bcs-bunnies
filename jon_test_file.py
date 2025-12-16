@@ -13,7 +13,7 @@ pygame.display.set_caption('Bunnies: The Quest for the Golden Cabbage')
 
 # Constants
 PLAYER_WIDTH, PLAYER_HEIGHT = 40, 50
-PLAYER_SPEED = 450
+PLAYER_SPEED = 650
 FOX_WIDTH, FOX_HEIGHT = 50, 50
 FOX_SPEED = 180 
 BLOCK_SIZE = 80

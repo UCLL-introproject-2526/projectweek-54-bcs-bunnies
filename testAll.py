@@ -15,12 +15,21 @@ WIDTH, HEIGHT = 1280, 720
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Bunnies Beta v1.0")
 
-# Background safe-load
+# ---------------- LOAD BACKGROUND ----------------
 try:
     BG = pygame.transform.scale(pygame.image.load("images/bg.png"), (WIDTH, HEIGHT))
 except:
     BG = pygame.Surface((WIDTH, HEIGHT))
     BG.fill((34, 139, 34))
+
+# ---------------- LOAD FOX IMAGE ----------------
+FOX_WIDTH, FOX_HEIGHT = 50, 50
+try:
+    FOX_IMG = pygame.image.load("images/fox/preview.gif").convert_alpha()
+    FOX_IMG = pygame.transform.scale(FOX_IMG, (FOX_WIDTH, FOX_HEIGHT))
+except:
+    FOX_IMG = pygame.Surface((FOX_WIDTH, FOX_HEIGHT))
+    FOX_IMG.fill((255, 165, 0))  # fallback
 
 # ---------------- CONSTANTS ----------------
 FPS = 60
@@ -28,14 +37,13 @@ FPS = 60
 PLAYER_WIDTH, PLAYER_HEIGHT = 40, 60
 PLAYER_SPEED = 500
 
-FOX_WIDTH, FOX_HEIGHT = 50, 50
 FOX_SPEED = 220
 
 CARROT_SIZE = 25
 TOTAL_CARROTS = 5
 
 LIVES_START = 2
-HIT_COOLDOWN = 1.0  # seconds (prevents double hits)
+HIT_COOLDOWN = 1.0  # seconds
 
 # ---------------- FONTS ----------------
 FONT = pygame.font.SysFont("comicsans", 30)
@@ -83,7 +91,6 @@ def spawn_fox():
         return pygame.Rect(random.randint(0, WIDTH - FOX_WIDTH), 0, FOX_WIDTH, FOX_HEIGHT)
     return pygame.Rect(random.randint(0, WIDTH - FOX_WIDTH), HEIGHT - FOX_HEIGHT, FOX_WIDTH, FOX_HEIGHT)
 
-
 def spawn_carrots():
     carrots = []
     for _ in range(TOTAL_CARROTS):
@@ -91,7 +98,6 @@ def spawn_carrots():
         y = random.randint(50, HEIGHT - 50)
         carrots.append(pygame.Rect(x, y, CARROT_SIZE, CARROT_SIZE))
     return carrots
-
 
 def new_run():
     player = pygame.Rect(WIDTH // 2, HEIGHT // 2, PLAYER_WIDTH, PLAYER_HEIGHT)
@@ -111,7 +117,7 @@ def draw_game(player, foxes, carrots, elapsed, lives, score):
         pygame.draw.rect(WIN, "gold", carrot)
 
     for fox in foxes:
-        pygame.draw.rect(WIN, "orange", fox)
+        WIN.blit(FOX_IMG, fox)
 
     pygame.draw.rect(WIN, "red", player)
 
@@ -121,7 +127,7 @@ def draw_game(player, foxes, carrots, elapsed, lives, score):
 
     pygame.display.update()
 
-
+# ---------------- MENUS ----------------
 def draw_menu(mouse):
     WIN.blit(BG, (0, 0))
     draw_text_center("BUNNIES", TITLE_FONT, (255, 255, 255), 160)
@@ -131,10 +137,11 @@ def draw_menu(mouse):
     h = Button("How to Play", (WIDTH // 2, 420))
     q = Button("Quit", (WIDTH // 2, 500))
 
-    for b in (p, h, q): b.draw(mouse)
+    for b in (p, h, q):
+        b.draw(mouse)
+
     pygame.display.update()
     return p, h, q
-
 
 def draw_howto(mouse):
     WIN.blit(BG, (0, 0))
@@ -159,7 +166,6 @@ def draw_howto(mouse):
     pygame.display.update()
     return back
 
-
 def draw_pause(mouse):
     overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 160))
@@ -171,10 +177,11 @@ def draw_pause(mouse):
     re = Button("Restart", (WIDTH // 2, 410))
     m = Button("Main Menu", (WIDTH // 2, 490))
 
-    for b in (r, re, m): b.draw(mouse)
+    for b in (r, re, m):
+        b.draw(mouse)
+
     pygame.display.update()
     return r, re, m
-
 
 def end_screen(text):
     WIN.fill((0, 0, 0))
@@ -201,29 +208,37 @@ def main():
                 run = False
 
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                if state == PLAYING: state = PAUSED
-                elif state == PAUSED: state = PLAYING
-                elif state == HOWTO: state = MENU
+                if state == PLAYING:
+                    state = PAUSED
+                elif state == PAUSED:
+                    state = PLAYING
+                elif state == HOWTO:
+                    state = MENU
 
             if state == MENU:
                 p, h, q = draw_menu(mouse)
                 if p.clicked(event):
                     player, foxes, carrots, lives, score, start_time, last_hit_time = new_run()
                     state = PLAYING
-                elif h.clicked(event): state = HOWTO
-                elif q.clicked(event): run = False
+                elif h.clicked(event):
+                    state = HOWTO
+                elif q.clicked(event):
+                    run = False
 
             elif state == HOWTO:
                 b = draw_howto(mouse)
-                if b.clicked(event): state = MENU
+                if b.clicked(event):
+                    state = MENU
 
             elif state == PAUSED:
                 r, re, m = draw_pause(mouse)
-                if r.clicked(event): state = PLAYING
+                if r.clicked(event):
+                    state = PLAYING
                 elif re.clicked(event):
                     player, foxes, carrots, lives, score, start_time, last_hit_time = new_run()
                     state = PLAYING
-                elif m.clicked(event): state = MENU
+                elif m.clicked(event):
+                    state = MENU
 
         if state == PLAYING:
             elapsed = time.time() - start_time
@@ -242,10 +257,14 @@ def main():
             player.y = max(0, min(player.y, HEIGHT - PLAYER_HEIGHT))
 
             for fox in foxes:
-                if fox.x < player.x: fox.x += FOX_SPEED * dt
-                if fox.x > player.x: fox.x -= FOX_SPEED * dt
-                if fox.y < player.y: fox.y += FOX_SPEED * dt
-                if fox.y > player.y: fox.y -= FOX_SPEED * dt
+                if fox.x < player.x:
+                    fox.x += FOX_SPEED * dt
+                if fox.x > player.x:
+                    fox.x -= FOX_SPEED * dt
+                if fox.y < player.y:
+                    fox.y += FOX_SPEED * dt
+                if fox.y > player.y:
+                    fox.y -= FOX_SPEED * dt
 
                 if fox.colliderect(player) and time.time() - last_hit_time > HIT_COOLDOWN:
                     last_hit_time = time.time()

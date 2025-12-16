@@ -79,12 +79,14 @@ HOWTO_BG =  pygame.transform.scale(pygame.image.load("images/howtoplay_backgroun
 PLAY_IMG = pygame.image.load("images/play_button.png").convert_alpha()
 HOW_IMG  = pygame.image.load("images/howtoplay_button.png").convert_alpha()
 QUIT_IMG = pygame.image.load("images/quit_button.png").convert_alpha()
+BACK_IMG = pygame.image.load("images/back_button.png").convert_alpha()
 
 TARGET_BTN_WIDTH = 480
 
 PLAY_IMG = scale_to_width(PLAY_IMG, TARGET_BTN_WIDTH)
 HOW_IMG  = scale_to_width(HOW_IMG,  TARGET_BTN_WIDTH)
 QUIT_IMG = scale_to_width(QUIT_IMG, TARGET_BTN_WIDTH)
+BACK_IMG = scale_to_width(BACK_IMG, TARGET_BTN_WIDTH)
 
 # ---------------- FONTS ----------------
 FONT = pygame.font.SysFont("comicsans", 30)
@@ -168,21 +170,18 @@ def draw_game(player, foxes, carrots, elapsed, lives, score):
     WIN.blit(FONT.render(f"Lives: {lives}", True, "red"), (10, 45))
     WIN.blit(FONT.render(f"Carrots: {score}/{TOTAL_CARROTS}", True, "gold"), (WIDTH - 220, 10))
 
-    pygame.display.update()
-
-
 def draw_menu(mouse, play_btn, how_btn, quit_btn):
     WIN.blit(MENU_BG, (0, 0))
 
     play_btn.draw(WIN)
     how_btn.draw(WIN)
     quit_btn.draw(WIN)
-    pygame.display.update()
 
 
-def draw_howto(mouse):
+def draw_howto(mouse, back_btn):
     WIN.blit(HOWTO_BG, (0, 0))
-    draw_text_outline("HOW TO PLAY", BIG_FONT, (255, 255, 255), (0, 0, 0),center=(WIDTH // 2, 130), outline_thickness=3)
+    draw_text_outline("HOW TO PLAY", BIG_FONT, (255,255,255), (0,0,0),
+                      center=(WIDTH//2, 130), outline_thickness=3)
 
     lines = [
         "Move with WASD or Arrow Keys",
@@ -195,39 +194,32 @@ def draw_howto(mouse):
 
     y = 230
     for line in lines:
-        draw_text_outline(line, FONT, (235, 235, 235), (0, 0, 0), center=(WIDTH // 2, y), outline_thickness=2)
+        draw_text_outline(line, FONT, (235,235,235), (0,0,0),
+                          center=(WIDTH//2, y), outline_thickness=2)
         y += 40
 
-    back = Button("Back", (WIDTH // 2, 580))
-    back.draw(mouse)
-    pygame.display.update()
-    return back
+    back_btn.draw(WIN)
 
 
-def draw_pause(mouse):
+
+def draw_pause(mouse, r, re, m):
     overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 160))
     WIN.blit(overlay, (0, 0))
 
-    draw_text_outline("PAUSED", BIG_FONT, (255, 255, 255), (0, 0, 0), center=(WIDTH // 2, 200), outline_thickness=3)
+    draw_text_outline("PAUSED", BIG_FONT, (255,255,255), (0,0,0),
+                      center=(WIDTH//2, 200), outline_thickness=3)
 
-    r = Button("Resume", (WIDTH // 2, 330))
-    re = Button("Restart", (WIDTH // 2, 410))
-    m = Button("Main Menu", (WIDTH // 2, 490))
-
-    for b in (r, re, m): b.draw(mouse)
-    pygame.display.update()
-    return r, re, m
+    r.draw(mouse)
+    re.draw(mouse)
+    m.draw(mouse)
 
 
 def end_screen(text):
     WIN.fill((0, 0, 0))
-    msg = END_FONT.render(text, True, "white")
-    WIN.blit(msg, msg.get_rect(center=(WIDTH // 2, HEIGHT // 2)))
-
-    draw_text_outline("GAME OVER", END_FONT, (255, 255, 255), (0, 0, 0),center=(WIDTH // 2, HEIGHT //2), outline_thickness=4)
-
-    pygame.display.update()
+    draw_text_outline(text, END_FONT, (255,255,255), (0,0,0),
+                      center=(WIDTH//2, HEIGHT//2), outline_thickness=4)
+    pygame.display.flip()
     pygame.time.delay(4000)
 
 # ---------------- MAIN LOOP ----------------
@@ -239,6 +231,12 @@ def main():
     play_btn = ImageButton(PLAY_IMG, (WIDTH // 2, 470))
     how_btn  = ImageButton(HOW_IMG,  (WIDTH // 2, 565))
     quit_btn = ImageButton(QUIT_IMG, (WIDTH // 2, 660))
+    back_btn = ImageButton(BACK_IMG, (WIDTH // 2, 600))
+    #pause buttons
+    pause_resume = Button("Resume", (WIDTH // 2, 330))
+    pause_restart = Button("Restart", (WIDTH // 2, 410))
+    pause_menu = Button("Main Menu", (WIDTH // 2, 490))
+
 
     #start run
     player, foxes, carrots, lives, score, start_time, last_hit_time = new_run()
@@ -268,17 +266,15 @@ def main():
 
             #howto clicking
             elif state == HOWTO:
-                b = draw_howto(mouse)
-                if b.clicked(event): state = MENU
+                if back_btn.clicked(event): state = MENU
 
             #pause clicking
             elif state == PAUSED:
-                r, re, m = draw_pause(mouse)
-                if r.clicked(event): state = PLAYING
-                elif re.clicked(event):
+                if pause_resume.clicked(event): state = PLAYING
+                elif pause_restart.clicked(event):
                     player, foxes, carrots, lives, score, start_time, last_hit_time = new_run()
                     state = PLAYING
-                elif m.clicked(event): state = MENU
+                elif pause_menu.clicked(event): state = MENU
 
         if state == PLAYING:
             elapsed = time.time() - start_time
@@ -329,10 +325,11 @@ def main():
         elif state == MENU:
             draw_menu(mouse, play_btn, how_btn, quit_btn)
         elif state == HOWTO:
-            draw_howto(mouse)
+            draw_howto(mouse, back_btn)
         elif state == PAUSED:
             draw_game(player, foxes, carrots, elapsed, lives, score)
-            draw_pause(mouse)
+            draw_pause(mouse, pause_resume, pause_restart, pause_menu)
+        pygame.display.flip()
 
     pygame.quit()
     sys.exit()

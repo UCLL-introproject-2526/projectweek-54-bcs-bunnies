@@ -5,6 +5,29 @@ import math
 import glob
 import os
 
+# Bunny class
+class Bunny:
+    def __init__(self, assets_dir="images/bunny", target_size=(40, 60), anim_fps=10, scale_factor=0.9):
+        self.assets_dir = assets_dir
+        self.anim_fps = anim_fps
+        self.frame_time = 1.0 / anim_fps
+        self.timer = 0.0
+        self.frame_index = 0
+
+        # Animation states
+        self.state = "idle"     # "idle" | "run"
+        self.facing = "right"   # "right" | "left" | "up" | "down"
+
+        # Load and prepare frames
+        self.frames = self.load_all_frames(target_size, scale_factor)
+
+        # Start with a safe surface
+        self.current_surface = self._get_current_surface()
+
+    def _load_all_frames(self, target_size, scale_factor):
+        #
+
+
 
 # Initialize Pygame and Font
 pygame.init()

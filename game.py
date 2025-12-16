@@ -38,7 +38,7 @@ def main():
     run = True
 
 # setting a player
-    player = pygame.Rect(    WIDTH // 2 - PLAYER_WIDTH // 2,HEIGHT // 2 - PLAYER_HEIGHT // 2,PLAYER_WIDTH,PLAYER_HEIGHT)
+    player = pygame.Rect(WIDTH // 2 - PLAYER_WIDTH // 2,HEIGHT // 2 - PLAYER_HEIGHT // 2,PLAYER_WIDTH,PLAYER_HEIGHT)
 
     clock = pygame.time.Clock()
 
@@ -47,11 +47,7 @@ def main():
 
     #quit game using X
     while run:
-<<<<<<< HEAD
-        clock.tick(130)
-=======
         dt = clock.tick(80) / 1000.0
->>>>>>> c2e3e83c85c243fb54655918023075857a54c472
         elapsed_time = time.time() - start_time
 
 
@@ -67,7 +63,7 @@ def main():
 
         x_input = (keys[pygame.K_RIGHT] or keys[pygame.K_d]) - (keys[pygame.K_LEFT] or keys[pygame.K_a])
         y_input = (keys[pygame.K_DOWN] or keys[pygame.K_s]) - (keys[pygame.K_UP] or keys[pygame.K_w])
-
+        #normalising movement/seperating movement from frame rate
         move = pygame.math.Vector2(x_input, y_input)
 
         if move.length_squared() > 0:
@@ -81,13 +77,7 @@ def main():
 
         draw(player, elapsed_time)    
     
-    pygame.quit()
+        pygame.quit()
 
-if __name__ == "__main__":
-    main()
-
-
-
-
-
-
+        if __name__ == "__main__":
+            main()

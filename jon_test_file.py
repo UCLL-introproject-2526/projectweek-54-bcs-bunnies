@@ -11,12 +11,11 @@ WIDTH, HEIGHT = 1280, 720
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('Bunnies Beta V 1.0')
 
-# Try to load BG, fallback to green if file is missing
 try:
     BG = pygame.transform.scale(pygame.image.load("images/bg.png"), (WIDTH, HEIGHT))
 except:
     BG = pygame.Surface((WIDTH, HEIGHT))
-    BG.fill((34, 139, 34)) # Forest Green
+    BG.fill((34, 139, 34)) 
 
 # Constants
 PLAYER_WIDTH, PLAYER_HEIGHT = 40, 60
@@ -32,31 +31,28 @@ END_FONT = pygame.font.SysFont("comicsans", 80)
 # --- 2. HELPER FUNCTIONS ---
 
 def display_message(text):
-    """Fills the screen and displays the end-game text for 7 seconds."""
-    WIN.fill((0, 0, 0))
+    """Fills the screen and displays the end-game text for 4 seconds."""
+    # Semi-transparent overlay feel
+    overlay = pygame.Surface((WIDTH, HEIGHT))
+    overlay.set_alpha(200) # Makes it slightly see-through
+    overlay.fill((0, 0, 0))
+    WIN.blit(overlay, (0,0))
+
     msg = END_FONT.render(text, 1, "white")
-    # Centers the text perfectly
     msg_rect = msg.get_rect(center=(WIDTH // 2, HEIGHT // 2))
     WIN.blit(msg, msg_rect)
+    
     pygame.display.update()
-    pygame.time.delay(7000) # 7-second pause
+    pygame.time.delay(3000) # Changed from 7000 to 4000 (4 seconds)
 
 def draw(player, elapsed_time, foxes, carrots, lives, score):
-    """Draws all game elements to the screen."""
     WIN.blit(BG, (0, 0))
-    
-    # Draw Golden Carrots
     for carrot in carrots:
         pygame.draw.rect(WIN, "gold", carrot)
-
-    # Draw Player (Bunny)
     pygame.draw.rect(WIN, "red", player)
-
-    # Draw Foxes
     for fox in foxes:
         pygame.draw.rect(WIN, "orange", fox)
 
-    # Draw UI
     time_text = FONT.render(f"Time: {round(elapsed_time)}s", 1, "white")
     lives_text = FONT.render(f"Lives: {lives}", 1, "red")
     score_text = FONT.render(f"Carrots: {score}/5", 1, "gold")
@@ -64,7 +60,6 @@ def draw(player, elapsed_time, foxes, carrots, lives, score):
     WIN.blit(time_text, (10, 10))
     WIN.blit(lives_text, (10, 50))
     WIN.blit(score_text, (WIDTH - 200, 10))
-    
     pygame.display.update()
 
 # --- 3. MAIN GAME LOOP ---
@@ -77,8 +72,6 @@ def main():
 
     lives = 2
     score = 0
-    
-    # Enemies and Collectibles
     foxes = [pygame.Rect(100, 100, FOX_WIDTH, FOX_HEIGHT)]
     carrots = []
     for _ in range(5):
@@ -90,14 +83,12 @@ def main():
         dt = clock.tick(FPS) / 1000.0
         elapsed_time = time.time() - start_time
 
-        # Event Queue
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
                 pygame.quit()
                 return
 
-        # Player Movement Logic
         keys = pygame.key.get_pressed()
         x_input = (keys[pygame.K_RIGHT] or keys[pygame.K_d]) - (keys[pygame.K_LEFT] or keys[pygame.K_a])
         y_input = (keys[pygame.K_DOWN] or keys[pygame.K_s]) - (keys[pygame.K_UP] or keys[pygame.K_w])
@@ -108,13 +99,10 @@ def main():
             player.x += int(move.x)
             player.y += int(move.y)
 
-        # Boundary Clamping
         player.x = max(0, min(player.x, WIDTH - PLAYER_WIDTH))
         player.y = max(0, min(player.y, HEIGHT - PLAYER_HEIGHT))
 
-        # Fox AI and Collision
         for fox in foxes:
-            # Simple chase logic
             if fox.x < player.x: fox.x += FOX_SPEED * dt
             if fox.x > player.x: fox.x -= FOX_SPEED * dt
             if fox.y < player.y: fox.y += FOX_SPEED * dt
@@ -122,19 +110,14 @@ def main():
 
             if fox.colliderect(player):
                 lives -= 1
-                # Spawn an additional fox at a random edge
                 new_x = random.choice([0, WIDTH - FOX_WIDTH])
                 new_y = random.randint(0, HEIGHT - FOX_HEIGHT)
                 foxes.append(pygame.Rect(new_x, new_y, FOX_WIDTH, FOX_HEIGHT))
-                
-                # Reset Bunny to center to avoid instant multi-hits
                 player.x, player.y = WIDTH // 2, HEIGHT // 2
-                
                 if lives > 0:
                     draw(player, elapsed_time, foxes, carrots, lives, score)
-                    pygame.time.delay(500) # Brief pause after hit
+                    pygame.time.delay(500)
 
-        # Carrot Collection
         for carrot in carrots[:]:
             if player.colliderect(carrot):
                 carrots.remove(carrot)

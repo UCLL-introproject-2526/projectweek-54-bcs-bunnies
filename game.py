@@ -77,7 +77,7 @@ def main():
 
         draw(player, elapsed_time)    
     
-        pygame.quit()
+    pygame.quit()
 
-        if __name__ == "__main__":
+if __name__ == "__main__":
             main()

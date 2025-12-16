@@ -12,7 +12,7 @@ pygame.display.set_caption('Bunnies: Forest Dungeon')
 
 # Constants
 PLAYER_WIDTH, PLAYER_HEIGHT = 40, 50
-PLAYER_SPEED = 650
+PLAYER_SPEED = 450
 FOX_WIDTH, FOX_HEIGHT = 50, 50
 FOX_SPEED = 400
 CARROT_SIZE = 15

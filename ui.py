@@ -20,6 +20,17 @@ def safe_load_bg(path: str, fallback_color=(40, 80, 40)) -> pygame.Surface:
         surf.fill(fallback_color)
         return surf
 
+def safe_load_shader(path: str, fallback_color=(40, 80, 40)) -> pygame.Surface:
+    try:
+        img = pygame.image.load(path).convert_alpha()
+        img.set_alpha(85)
+        return pygame.transform.scale(img, (WIDTH, HEIGHT))
+    except Exception as e:
+        print(f"[UI] Failed to load background {path}: {e}")
+        surf = pygame.Surface((WIDTH, HEIGHT))
+        surf.fill(fallback_color)
+        return surf
+
 def safe_load_png(path: str) -> pygame.Surface:
     try:
         return pygame.image.load(path).convert_alpha()
@@ -50,6 +61,7 @@ def draw_text_outline(surface: pygame.Surface, text: str, font: pygame.font.Font
     surface.blit(base, (x, y))
 
 class ImageButton:
+    #makes pictures used as button interqcteqble elements
     def __init__(self, image: pygame.Surface, center):
         self.image = image
         self.rect = self.image.get_rect(center=center)

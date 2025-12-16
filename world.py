@@ -81,3 +81,17 @@ def portal_transition(side: str, coords, player: pygame.Rect):
     elif side == "right":
         coords = (x + 1, y); player.x = 120
     return coords
+
+def respawn_player(player, room, WIDTH, HEIGHT):
+    while True:
+        # Pick a random position inside the room
+        new_x = random.randint(50, WIDTH - 50)
+        new_y = random.randint(50, HEIGHT - 50)
+        # Move the player rect to position
+        player.center = (new_x, new_y)
+
+        # Check collision with foxes
+        collision = any(player.colliderect(fox) for fox in room["foxes"])
+
+        if not collision:
+            break 

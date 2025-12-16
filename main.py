@@ -10,6 +10,7 @@ from game import run_game
 MENU = "menu"
 HOWTO = "howto"
 
+
 def main():
     pygame.init()
     pygame.font.init()
@@ -25,6 +26,7 @@ def main():
     # Backgrounds (safe load)
     MENU_BG = safe_load_bg("images/menu_background.png", (30, 120, 80))
     HOWTO_BG = safe_load_bg("images/howtoplay_background.png", (30, 120, 80))
+    
 
     # Buttons (safe load + scale)
     TARGET_BTN_WIDTH = 480
@@ -41,6 +43,7 @@ def main():
     quit_btn = ImageButton(QUIT_IMG, (WIDTH // 2, 660))
     back_btn = ImageButton(BACK_IMG, (WIDTH // 2, 620))
 
+    #Initialising the frame rate 
     clock = pygame.time.Clock()
     state = MENU
 
@@ -79,7 +82,7 @@ def main():
                 if back_btn.clicked(event):
                     state = MENU
 
-        # ----- DRAW -----
+        # DRAW 
         if state == MENU:
             WIN.blit(MENU_BG, (0, 0))
             play_btn.draw(WIN)

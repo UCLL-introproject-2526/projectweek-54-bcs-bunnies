@@ -4,8 +4,10 @@ import time
 import random
 import math
 from settings import WIDTH, HEIGHT, FPS, PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_SPEED, FOX_SPEED, LIVES_START, TARGET_SCORE, WHITE, BLACK
-from ui import draw_text_outline
-from world import generate_room, move_with_collision, portal_transition
+from ui import draw_text_outline,safe_load_shader
+from world import generate_room, move_with_collision, portal_transition,respawn_player
+
+
 
 def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.Font) -> str:
     """Runs one play session. Returns 'menu' when finished (win/lose or quit)."""
@@ -16,6 +18,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
     lives = LIVES_START
     state = "PLAYING"
     pulse_timer = 0.0
+    LOW_BG = safe_load_shader("images/damage.png",(30, 120, 80))
 
     while True:
         dt = clock.tick(FPS) / 1000.0
@@ -35,6 +38,9 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             if keys[pygame.K_d] or keys[pygame.K_RIGHT]: dx =  PLAYER_SPEED * dt
             if keys[pygame.K_w] or keys[pygame.K_UP]:    dy = -PLAYER_SPEED * dt
             if keys[pygame.K_s] or keys[pygame.K_DOWN]:  dy =  PLAYER_SPEED * dt
+            
+            
+            
 
             move_with_collision(player, room["blocks"], dx, dy)
 
@@ -55,7 +61,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                     lives -= 1
                     # spawn another fox in this room
                     room["foxes"].append(pygame.Rect(random.randint(100, 300), random.randint(100, 300), fox.width, fox.height))
-                    player.center = (WIDTH//2, HEIGHT//2)
+                    respawn_player = (player,room,WIDTH,HEIGHT)
                     if lives <= 0:
                         state = "LOST"
                         break
@@ -97,6 +103,11 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
         pygame.draw.rect(WIN, WHITE, player)
         for fox in room["foxes"]:
             pygame.draw.rect(WIN, (255, 50, 50), fox)
+        
+        #post-damage shading
+        if lives == 1:
+            WIN.blit(LOW_BG,(0,0))
+
 
         # UI text with outline
         ui = f"Lives: {lives} | Score: {score}/{TARGET_SCORE} | Location: {room['name']}"
@@ -107,6 +118,8 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             overlay.set_alpha(200)
             overlay.fill((0, 0, 0))
             WIN.blit(overlay, (0, 0))
+        
+            
 
             msg = "YOU LOST LIL BRO" if state == "LOST" else "YOU WON CHAMP"
             draw_text_outline(WIN, msg, END_FONT, WHITE, BLACK, center=(WIDTH//2, HEIGHT//2), outline_thickness=4)

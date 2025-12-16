@@ -80,4 +80,8 @@ def main():
     pygame.quit()
 
 if __name__ == "__main__":
+<<<<<<< HEAD
             main()
+=======
+    main()
+>>>>>>> f4af55df7b7c207c34604cdef2b4f03da908589d

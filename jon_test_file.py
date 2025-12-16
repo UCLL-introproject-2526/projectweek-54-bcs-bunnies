@@ -2,140 +2,170 @@ import pygame
 import time
 import random
 
-# Initialize Pygame and Font
+# Initialize Pygame
 pygame.init()
-pygame.font.init()
 
-# --- 1. SETTINGS & DISPLAY ---
+# --- 1. SETTINGS ---
 WIDTH, HEIGHT = 1280, 720
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption('Bunnies Beta V 1.0')
-
-try:
-    BG = pygame.transform.scale(pygame.image.load("images/bg.png"), (WIDTH, HEIGHT))
-except:
-    BG = pygame.Surface((WIDTH, HEIGHT))
-    BG.fill((34, 139, 34)) 
+pygame.display.set_caption('Bunnies: Forest Dungeon')
 
 # Constants
-PLAYER_WIDTH, PLAYER_HEIGHT = 40, 60
-PLAYER_SPEED = 720
+PLAYER_WIDTH, PLAYER_HEIGHT = 40, 50
+PLAYER_SPEED = 450
 FOX_WIDTH, FOX_HEIGHT = 50, 50
-FOX_SPEED = 400
-CARROT_SIZE = 25
+FOX_SPEED = 180 
+BLOCK_SIZE = 80
 FPS = 60
 
-FONT = pygame.font.SysFont("comicsans", 30)
-END_FONT = pygame.font.SysFont("comicsans", 80)
+# Fonts
+FONT = pygame.font.SysFont("comicsans", 30, bold=True)
+END_FONT = pygame.font.SysFont("comicsans", 80, bold=True)
 
-# --- 2. HELPER FUNCTIONS ---
+# --- 2. ROOM GENERATION ---
+room_data = {}
 
-def display_message(text):
-    """Fills the screen and displays the end-game text for 4 seconds."""
-    # Semi-transparent overlay feel
-    overlay = pygame.Surface((WIDTH, HEIGHT))
-    overlay.set_alpha(200) # Makes it slightly see-through
-    overlay.fill((0, 0, 0))
-    WIN.blit(overlay, (0,0))
+def generate_room(coords):
+    if coords not in room_data:
+        tint = (random.randint(20, 50), random.randint(80, 130), random.randint(20, 50))
+        
+        blocks = []
+        # Safe Zone for spawning
+        safe_zone = pygame.Rect(WIDTH//2 - 150, HEIGHT//2 - 150, 300, 300)
+        
+        for _ in range(random.randint(6, 15)):
+            bx = (random.randint(1, (WIDTH // BLOCK_SIZE) - 2)) * BLOCK_SIZE
+            by = (random.randint(1, (HEIGHT // BLOCK_SIZE) - 2)) * BLOCK_SIZE
+            block_rect = pygame.Rect(bx, by, BLOCK_SIZE, BLOCK_SIZE)
+            
+            if not block_rect.colliderect(safe_zone):
+                blocks.append(block_rect)
 
-    msg = END_FONT.render(text, 1, "white")
-    msg_rect = msg.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-    WIN.blit(msg, msg_rect)
+        # Starts with exactly 1 fox
+        foxes = [pygame.Rect(random.randint(100, 300), random.randint(100, 600), FOX_WIDTH, FOX_HEIGHT)]
+
+        carrots = []
+        for _ in range(random.randint(3, 6)):
+            c_rect = pygame.Rect(random.randint(100, 1100), random.randint(100, 600), 25, 25)
+            carrots.append(c_rect)
+
+        room_data[coords] = {"blocks": blocks, "foxes": foxes, "carrots": carrots, "color": tint}
+    return room_data[coords]
+
+# --- 3. PHYSICS ---
+def move_with_collision(rect, blocks, dx, dy):
+    rect.x += dx
+    for block in blocks:
+        if rect.colliderect(block):
+            if dx > 0: rect.right = block.left
+            if dx < 0: rect.left = block.right
     
-    pygame.display.update()
-    pygame.time.delay(3000) # Changed from 7000 to 4000 (4 seconds)
+    rect.y += dy
+    for block in blocks:
+        if rect.colliderect(block):
+            if dy > 0: rect.bottom = block.top
+            if dy < 0: rect.top = block.bottom
 
-def draw(player, elapsed_time, foxes, carrots, lives, score):
-    WIN.blit(BG, (0, 0))
-    for carrot in carrots:
-        pygame.draw.rect(WIN, "gold", carrot)
-    pygame.draw.rect(WIN, "red", player)
-    for fox in foxes:
-        pygame.draw.rect(WIN, "orange", fox)
-
-    time_text = FONT.render(f"Time: {round(elapsed_time)}s", 1, "white")
-    lives_text = FONT.render(f"Lives: {lives}", 1, "red")
-    score_text = FONT.render(f"Carrots: {score}/5", 1, "gold")
-
-    WIN.blit(time_text, (10, 10))
-    WIN.blit(lives_text, (10, 50))
-    WIN.blit(score_text, (WIDTH - 200, 10))
-    pygame.display.update()
-
-# --- 3. MAIN GAME LOOP ---
-
+# --- 4. MAIN GAME ---
 def main():
     run = True
-    player = pygame.Rect(WIDTH // 2, HEIGHT // 2, PLAYER_WIDTH, PLAYER_HEIGHT)
     clock = pygame.time.Clock()
-    start_time = time.time()
-
-    lives = 2
+    player = pygame.Rect(WIDTH//2, HEIGHT//2, PLAYER_WIDTH, PLAYER_HEIGHT)
+    current_coords = (0, 0)
     score = 0
-    foxes = [pygame.Rect(100, 100, FOX_WIDTH, FOX_HEIGHT)]
-    carrots = []
-    for _ in range(5):
-        x = random.randint(50, WIDTH - 50)
-        y = random.randint(50, HEIGHT - 50)
-        carrots.append(pygame.Rect(x, y, CARROT_SIZE, CARROT_SIZE))
+    lives = 3
+    game_state = "PLAYING" # Can be "PLAYING", "WON", "LOST"
 
     while run:
         dt = clock.tick(FPS) / 1000.0
-        elapsed_time = time.time() - start_time
-
+        room = generate_room(current_coords)
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
-                pygame.quit()
-                return
 
-        keys = pygame.key.get_pressed()
-        x_input = (keys[pygame.K_RIGHT] or keys[pygame.K_d]) - (keys[pygame.K_LEFT] or keys[pygame.K_a])
-        y_input = (keys[pygame.K_DOWN] or keys[pygame.K_s]) - (keys[pygame.K_UP] or keys[pygame.K_w])
+        if game_state == "PLAYING":
+            # Movement
+            keys = pygame.key.get_pressed()
+            dx, dy = 0, 0
+            if keys[pygame.K_a] or keys[pygame.K_LEFT]: dx = -PLAYER_SPEED * dt
+            if keys[pygame.K_d] or keys[pygame.K_RIGHT]: dx = PLAYER_SPEED * dt
+            if keys[pygame.K_w] or keys[pygame.K_UP]: dy = -PLAYER_SPEED * dt
+            if keys[pygame.K_s] or keys[pygame.K_DOWN]: dy = PLAYER_SPEED * dt
+            
+            move_with_collision(player, room["blocks"], dx, dy)
+
+            # Room Swapping
+            if player.x > WIDTH:
+                current_coords = (current_coords[0] + 1, current_coords[1])
+                player.x = 20
+            elif player.x < -PLAYER_WIDTH:
+                current_coords = (current_coords[0] - 1, current_coords[1])
+                player.x = WIDTH - 20
+            elif player.y > HEIGHT:
+                current_coords = (current_coords[0], current_coords[1] - 1)
+                player.y = 20
+            elif player.y < -PLAYER_HEIGHT:
+                current_coords = (current_coords[0], current_coords[1] + 1)
+                player.y = HEIGHT - 20
+
+            # Fox AI
+            for fox in room["foxes"]:
+                fdx = (FOX_SPEED * dt) if fox.x < player.x else (-FOX_SPEED * dt)
+                fdy = (FOX_SPEED * dt) if fox.y < player.y else (-FOX_SPEED * dt)
+                move_with_collision(fox, room["blocks"], fdx, fdy)
+                
+                if fox.colliderect(player):
+                    lives -= 1
+                    # SPAWN ANOTHER FOX
+                    new_fox = pygame.Rect(random.randint(50, 200), random.randint(50, 200), FOX_WIDTH, FOX_HEIGHT)
+                    room["foxes"].append(new_fox)
+                    
+                    player.center = (WIDTH//2, HEIGHT//2)
+                    if lives <= 0:
+                        game_state = "LOST"
+
+            # Score logic
+            for carrot in room["carrots"][:]:
+                if player.colliderect(carrot):
+                    room["carrots"].remove(carrot)
+                    score += 1
+                    if score >= 15: # Win condition
+                        game_state = "WON"
+
+        # --- DRAWING ---
+        WIN.fill(room["color"])
         
-        move = pygame.math.Vector2(x_input, y_input)
-        if move.length_squared() > 0:
-            move = move.normalize() * PLAYER_SPEED * dt
-            player.x += int(move.x)
-            player.y += int(move.y)
+        for block in room["blocks"]:
+            pygame.draw.rect(WIN, (101, 67, 33), block)
+            pygame.draw.rect(WIN, (60, 40, 20), block, 3) 
+            
+        for carrot in room["carrots"]:
+            pygame.draw.circle(WIN, (255, 165, 0), carrot.center, 12)
 
-        player.x = max(0, min(player.x, WIDTH - PLAYER_WIDTH))
-        player.y = max(0, min(player.y, HEIGHT - PLAYER_HEIGHT))
+        pygame.draw.rect(WIN, (255, 0, 0), player) 
+        for fox in room["foxes"]:
+            pygame.draw.rect(WIN, (255, 140, 0), fox)
 
-        for fox in foxes:
-            if fox.x < player.x: fox.x += FOX_SPEED * dt
-            if fox.x > player.x: fox.x -= FOX_SPEED * dt
-            if fox.y < player.y: fox.y += FOX_SPEED * dt
-            if fox.y > player.y: fox.y -= FOX_SPEED * dt
+        # UI
+        ui_text = FONT.render(f"Lives: {lives} | Carrots: {score}/15 | Room: {current_coords}", True, (255, 255, 255))
+        WIN.blit(ui_text, (20, 20))
 
-            if fox.colliderect(player):
-                lives -= 1
-                new_x = random.choice([0, WIDTH - FOX_WIDTH])
-                new_y = random.randint(0, HEIGHT - FOX_HEIGHT)
-                foxes.append(pygame.Rect(new_x, new_y, FOX_WIDTH, FOX_HEIGHT))
-                player.x, player.y = WIDTH // 2, HEIGHT // 2
-                if lives > 0:
-                    draw(player, elapsed_time, foxes, carrots, lives, score)
-                    pygame.time.delay(500)
+        # End Game Messages
+        if game_state != "PLAYING":
+            overlay = pygame.Surface((WIDTH, HEIGHT))
+            overlay.set_alpha(200)
+            overlay.fill((0, 0, 0))
+            WIN.blit(overlay, (0, 0))
+            
+            text = "YOU LOST LIL BRO" if game_state == "LOST" else "YOU WON CHAMP"
+            color = (255, 0, 0) if game_state == "LOST" else (0, 255, 0)
+            
+            msg = END_FONT.render(text, True, color)
+            msg_rect = msg.get_rect(center=(WIDTH//2, HEIGHT//2))
+            WIN.blit(msg, msg_rect)
 
-        for carrot in carrots[:]:
-            if player.colliderect(carrot):
-                carrots.remove(carrot)
-                score += 1
-
-        # Win/Loss Checking
-        if lives <= 0:
-            draw(player, elapsed_time, foxes, carrots, lives, score)
-            display_message("You lost bitch")
-            run = False
-        
-        elif score >= 5:
-            draw(player, elapsed_time, foxes, carrots, lives, score)
-            display_message("You won champ")
-            run = False
-
-        if run:
-            draw(player, elapsed_time, foxes, carrots, lives, score)
+        pygame.display.update()
 
     pygame.quit()
 

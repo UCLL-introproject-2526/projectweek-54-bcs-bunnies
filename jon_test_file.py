@@ -14,9 +14,10 @@ pygame.display.set_caption('Bunnies: Forest Dungeon')
 PLAYER_WIDTH, PLAYER_HEIGHT = 40, 50
 PLAYER_SPEED = 450
 FOX_WIDTH, FOX_HEIGHT = 50, 50
-FOX_SPEED = 180 
-BLOCK_SIZE = 80
+FOX_SPEED = 400
+CARROT_SIZE = 15
 FPS = 60
+BLOCK_SIZE = 50
 
 # Fonts
 FONT = pygame.font.SysFont("comicsans", 30, bold=True)

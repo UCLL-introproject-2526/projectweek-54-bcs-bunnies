@@ -8,7 +8,10 @@ pygame.font.init()
 WIDTH,HEIGHT= 1000,800
 screen = pygame.display.set_mode((WIDTH,HEIGHT),pygame.OPENGL )
 display=pygame.Surface(WIDTH,HEIGHT)
+display.set_colorkey((0,0,0))
 pygame.display.set_caption('bunnies beta V 1.0')
+
+screen_shader = pygame_shaders.Shader((WIDTH,HEIGHT),(WIDTH,HEIGHT),(0,0),"shaders\vertex.glsl","shaders\fragment.glsl")
 
 BG =pygame.transform.scale(pygame.image.load("images/bg.png"), (WIDTH, HEIGHT))
 
@@ -19,11 +22,11 @@ PLAYER_VEL = 5
 FONT = pygame.font.SysFont("comicsans",30)
 
 def draw (player, elapsed_time):
-    WIN.blit(BG,(0,0))
+    screen.blit(BG,(0,0))
     pygame.draw.rect(WIN,"red", player)
 
     time_text = FONT.render(f"Time: {round(elapsed_time)}s",1,"white")
-    WIN.blit(time_text, (10,10))
+    screen.blit(time_text, (10,10))
 
     pygame.display.update()
 #defining gameplay loop
@@ -40,6 +43,7 @@ def main():
 
     #quit game using X
     while run:
+        pygame_shaders.clear((0,0,0))
         clock.tick(80)
         elapsed_time = time.time() - start_time
         for event in pygame.event.get():

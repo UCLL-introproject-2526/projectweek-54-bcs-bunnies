@@ -9,6 +9,25 @@ def scale_to_width(image, target_width):
     scale = target_width / w
     return pygame.transform.smoothscale(image, (int(w * scale), int(h * scale)))
 
+#helper function for text outline for better menu text readability
+def draw_text_outline(text, font, text_color, outline_color,*, center=None, pos=None, outline_thickness=2):
+    base = font.render(text, True, text_color)
+    outline = font.render(text, True, outline_color)
+
+    if center:
+        rect = base.get_rect(center=center)
+        x, y = rect.topleft
+    else:
+        x, y = pos
+
+    for dx in range(-outline_thickness, outline_thickness + 1):
+        for dy in range(-outline_thickness, outline_thickness + 1):
+            if dx != 0 or dy != 0:
+                WIN.blit(outline, (x + dx, y + dy))
+
+    WIN.blit(base, (x, y))
+
+
 # ---------------- INIT ----------------
 pygame.init()
 pygame.font.init()
@@ -163,7 +182,7 @@ def draw_menu(mouse, play_btn, how_btn, quit_btn):
 
 def draw_howto(mouse):
     WIN.blit(HOWTO_BG, (0, 0))
-    draw_text_center("HOW TO PLAY", BIG_FONT, (255, 255, 255), 130)
+    draw_text_outline("HOW TO PLAY", BIG_FONT, (255, 255, 255), (0, 0, 0),center=(WIDTH // 2, 130), outline_thickness=3)
 
     lines = [
         "Move with WASD or Arrow Keys",
@@ -176,7 +195,7 @@ def draw_howto(mouse):
 
     y = 230
     for line in lines:
-        draw_text_center(line, FONT, (235, 235, 235), y)
+        draw_text_outline(line, FONT, (235, 235, 235), (0, 0, 0), center=(WIDTH // 2, y), outline_thickness=2)
         y += 40
 
     back = Button("Back", (WIDTH // 2, 580))
@@ -190,7 +209,7 @@ def draw_pause(mouse):
     overlay.fill((0, 0, 0, 160))
     WIN.blit(overlay, (0, 0))
 
-    draw_text_center("PAUSED", BIG_FONT, (255, 255, 255), 200)
+    draw_text_outline("PAUSED", BIG_FONT, (255, 255, 255), (0, 0, 0), center=(WIDTH // 2, 200), outline_thickness=3)
 
     r = Button("Resume", (WIDTH // 2, 330))
     re = Button("Restart", (WIDTH // 2, 410))
@@ -205,6 +224,9 @@ def end_screen(text):
     WIN.fill((0, 0, 0))
     msg = END_FONT.render(text, True, "white")
     WIN.blit(msg, msg.get_rect(center=(WIDTH // 2, HEIGHT // 2)))
+
+    draw_text_outline("GAME OVER", END_FONT, (255, 255, 255), (0, 0, 0),center=(WIDTH // 2, HEIGHT //2), outline_thickness=4)
+
     pygame.display.update()
     pygame.time.delay(4000)
 

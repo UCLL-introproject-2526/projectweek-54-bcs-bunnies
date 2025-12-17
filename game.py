@@ -42,6 +42,12 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
     #Foxes
     fox_files = sorted(os.listdir("images/fox"))
     fox_images = [pygame.image.load(os.path.join("images/fox", f)).convert_alpha() for f in fox_files]
+    scale_factor = 2  # <-- adjust for bigger (e.g., 1.5 for 50% bigger, 3 for triple)
+    fox_images = [pygame.transform.scale(img, (int(img.get_width() * scale_factor), int(img.get_height() * scale_factor))) for img in fox_images]
+
+    #Carrots
+    carrot_img = pygame.image.load("images/carrot.png").convert_alpha()
+    carrot_img = pygame.transform.scale(carrot_img, (50, 50))
 
     # Pause resume button (under PAUSED)
     RESUME_IMG = scale_to_width(safe_load_png(
@@ -308,8 +314,8 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
 
             # carrots
             for carrot in room["carrots"]:
-                pygame.draw.circle(
-                    WIN, (255, 165, 0), (carrot.centerx + cx, carrot.centery + cy), 12)
+                rect = carrot_img.get_rect(center=(carrot.centerx + cx, carrot.centery + cy))
+                WIN.blit(carrot_img, rect)
 
             # invincibility blink
             blink_hide = False

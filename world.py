@@ -59,7 +59,7 @@ def generate_room(coords):
 
 def move_with_collision(rect: pygame.Rect, blocks, dx: float, dy: float):
     rect.x += int(dx)
-    for block in blocks:
+    for block in blocks:           
         if rect.colliderect(block):
             if dx > 0: rect.right = block.left
             if dx < 0: rect.left = block.right

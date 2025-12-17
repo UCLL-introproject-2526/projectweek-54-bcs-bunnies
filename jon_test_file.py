@@ -42,7 +42,6 @@ def generate_room(coords):
         blocks = []
         safe_zone = pygame.Rect(WIDTH//2 - 150, HEIGHT//2 - 150, 300, 300)
         
-        # Boundary Walls
         walls = [
             pygame.Rect(0, 0, WIDTH, 20),
             pygame.Rect(0, HEIGHT-20, WIDTH, 20),
@@ -75,7 +74,7 @@ def generate_room(coords):
             "color": random.choice(bg_colors),
             "theme": theme,
             "portals": portals,
-            "name": get_funny_name() # Assign a funny name!
+            "name": get_funny_name()
         }
     return room_data[coords]
 
@@ -93,25 +92,45 @@ def move_with_collision(rect, blocks, dx, dy):
             if dy < 0: rect.top = block.bottom
 
 def main():
+    global room_data
     run = True
     clock = pygame.time.Clock()
+    
     player = pygame.Rect(WIDTH//2, HEIGHT//2, PLAYER_WIDTH, PLAYER_HEIGHT)
     current_coords = (0, 0)
     score = 0
     lives = 3
     game_state = "PLAYING"
-    
-    # Pulse animation variable
     pulse_timer = 0
+    
+    # Hit Flash Timer
+    hit_flash_timer = 0
+    FLASH_DURATION = 0.5 # Total time for the fade-out
+    
+    btn_rect = pygame.Rect(WIDTH//2 - 150, HEIGHT//2 + 100, 300, 60)
 
     while run:
         dt = clock.tick(FPS) / 1000.0
-        pulse_timer += dt * 5 # Control pulse speed
+        pulse_timer += dt * 5 
+        
+        if hit_flash_timer > 0:
+            hit_flash_timer -= dt
+            
         room = generate_room(current_coords)
         
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
+            
+            if event.type == pygame.MOUSEBUTTONDOWN and game_state != "PLAYING":
+                if btn_rect.collidepoint(event.pos):
+                    room_data = {} 
+                    player.center = (WIDTH//2, HEIGHT//2)
+                    current_coords = (0, 0)
+                    score = 0
+                    lives = 3
+                    hit_flash_timer = 0
+                    game_state = "PLAYING"
 
         if game_state == "PLAYING":
             keys = pygame.key.get_pressed()
@@ -123,7 +142,6 @@ def main():
             
             move_with_collision(player, room["blocks"], dx, dy)
 
-            # Portal Logic
             for side, p_rect in room["portals"].items():
                 if player.colliderect(p_rect):
                     if side == "top":
@@ -139,7 +157,6 @@ def main():
                         current_coords = (current_coords[0] + 1, current_coords[1])
                         player.x = 120
 
-            # Fox AI
             for fox in room["foxes"]:
                 fdx = (FOX_SPEED * dt) if fox.x < player.x else (-FOX_SPEED * dt)
                 fdy = (FOX_SPEED * dt) if fox.y < player.y else (-FOX_SPEED * dt)
@@ -147,12 +164,14 @@ def main():
                 
                 if fox.colliderect(player):
                     lives -= 1
+                    # Start the flash timer
+                    hit_flash_timer = FLASH_DURATION 
+                    
                     new_fox = pygame.Rect(random.randint(100, 300), random.randint(100, 300), FOX_WIDTH, FOX_HEIGHT)
                     room["foxes"].append(new_fox)
                     player.center = (WIDTH//2, HEIGHT//2)
                     if lives <= 0: game_state = "LOST"
 
-            # Score
             for carrot in room["carrots"][:]:
                 if player.colliderect(carrot):
                     room["carrots"].remove(carrot)
@@ -162,17 +181,14 @@ def main():
         # --- DRAWING ---
         WIN.fill(room["color"])
         
-        # Pulse Calculation (Shiny Portals)
-        pulse_val = (math.sin(pulse_timer) + 1) / 2 # Normalize between 0 and 1
+        pulse_val = (math.sin(pulse_timer) + 1) / 2 
         glow_color = (0, 200 + int(55 * pulse_val), 200 + int(55 * pulse_val))
 
         for p_rect in room["portals"].values():
-            # Draw glow ring
             glow_rect = p_rect.inflate(10 * pulse_val, 10 * pulse_val)
-            pygame.draw.ellipse(WIN, (255, 255, 255), glow_rect) # Outer white glow
-            pygame.draw.ellipse(WIN, glow_color, p_rect) # Inner pulsing cyan
+            pygame.draw.ellipse(WIN, (255, 255, 255), glow_rect) 
+            pygame.draw.ellipse(WIN, glow_color, p_rect) 
 
-        # Nature Objects
         for block in room["blocks"]:
             if block.width == WIDTH or block.height == HEIGHT:
                 pygame.draw.rect(WIN, (30, 30, 30), block)
@@ -191,16 +207,34 @@ def main():
         for fox in room["foxes"]:
             pygame.draw.rect(WIN, (255, 50, 50), fox)
 
-        # UI with Funny Name
         ui_text = FONT.render(f"Lives: {lives} | Score: {score}/15 | Location: {room['name']}", True, (255, 255, 255))
-        WIN.blit(ui_text, (30, 30))
+        WIN.blit(ui_text, (30, 30)) 
+
+        # --- DRAW THE SHOCK FLASH (SMOOTH FADE) ---
+        if hit_flash_timer > 0:
+            # Calculate alpha based on timer: (current_time / total_time) * max_alpha
+            # This makes it fade from 150 to 0
+            current_alpha = int((hit_flash_timer / FLASH_DURATION) * 150)
+            shock_overlay = pygame.Surface((WIDTH, HEIGHT))
+            shock_overlay.set_alpha(current_alpha) 
+            shock_overlay.fill((255, 0, 0))
+            WIN.blit(shock_overlay, (0, 0))
 
         if game_state != "PLAYING":
             overlay = pygame.Surface((WIDTH, HEIGHT)); overlay.set_alpha(200); overlay.fill((0, 0, 0))
             WIN.blit(overlay, (0, 0))
-            text = "YOU LOST LIL BRO" if game_state == "LOST" else "YOU WON CHAMP"
-            msg = END_FONT.render(text, True, (255, 255, 255))
+            
+            is_win = game_state == "WON"
+            main_msg = "YOU WON CHAMP" if is_win else "YOU LOST LIL BRO"
+            btn_msg = "PLAY AGAIN CHAMP" if is_win else "Try again loser"
+            btn_color = (218, 165, 32) if is_win else (200, 0, 0) 
+            
+            msg = END_FONT.render(main_msg, True, (255, 255, 255))
             WIN.blit(msg, msg.get_rect(center=(WIDTH//2, HEIGHT//2)))
+            
+            pygame.draw.rect(WIN, btn_color, btn_rect, border_radius=10)
+            btn_surface = FONT.render(btn_msg, True, (255, 255, 255))
+            WIN.blit(btn_surface, btn_surface.get_rect(center=btn_rect.center))
 
         pygame.display.update()
     pygame.quit()

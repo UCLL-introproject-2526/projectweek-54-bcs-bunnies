@@ -56,7 +56,7 @@ from settings import (
     INVINCIBILITY_DURATION, KNOCKBACK_PIXELS,
     # DASH + SPEED BOOST
     DASH_SPEED, DASH_DURATION, DASH_COOLDOWN,
-    SPEED_BOOST_SCORE_1, SPEED_BOOST_MULT_1
+    SPEED_BOOST_SCORE_1, SPEED_BOOST_MULT_1,CARROT_SIZE
 )
 
 from ui import draw_text_outline, ImageButton, safe_load_png, scale_to_width
@@ -89,7 +89,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
 
     #Carrots
     carrot_img = pygame.image.load("images/carrot.png").convert_alpha()
-    carrot_img = pygame.transform.scale(carrot_img, (50, 50))
+    carrot_img = pygame.transform.scale(carrot_img, (CARROT_SIZE, CARROT_SIZE))
 
     # Pause resume button (under PAUSED)
     RESUME_IMG = scale_to_width(safe_load_png(

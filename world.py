@@ -92,8 +92,9 @@ def generate_room(coords):
                              random.randint(100, 600), FOX_WIDTH, FOX_HEIGHT)]
 
 
+        carrot_w, carrot_h = 32, 32  # <-- edit to your image's width/height
         carrots = [pygame.Rect(random.randint(100, 1100), random.randint(
-            100, 600), 25, 25) for _ in range(random.randint(3, 6))]
+        100, 600), 16, 16) for _ in range(random.randint(3, 6))]  # <-- match scaled size
 
         portals = {
             "top": pygame.Rect(WIDTH//2 - PORTAL_SIZE//2, 0, PORTAL_SIZE, 30),
@@ -180,6 +181,8 @@ def generate_room(coords):
             "name": get_funny_name(),
             "fox_frames": [0] * len(foxes),  # <-- add here
             "fox_directions": [1] * len(foxes),
+            "fox_paths": [[] for _ in foxes],
+            
         }
     return room_data[coords]
 

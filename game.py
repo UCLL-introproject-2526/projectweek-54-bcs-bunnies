@@ -1,6 +1,7 @@
 import pygame
 import random
 import math
+from bunny import Bunny
 
 from settings import (
     WIDTH, HEIGHT, FPS,
@@ -46,7 +47,11 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
     - NEW: NO teleport on hit, knockback instead
     - NEW: 3s invincibility after hit (fox or trap)
     """
+    bunny = Bunny((WIDTH//2, HEIGHT//2), white_square_size=(64, 64))  # adjust size/pos as needed
+
     clock = pygame.time.Clock()
+    dt = clock.tick(FPS) / 1000.0
+    
 
     # Button shown ONLY on pause screen (under the paused text) -> resumes
     RESUME_IMG = scale_to_width(safe_load_png("images/back_button.png"), 260, smooth=False)
@@ -56,6 +61,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
         reset_world()
 
         player = pygame.Rect(WIDTH // 2, HEIGHT // 2, PLAYER_WIDTH, PLAYER_HEIGHT)
+        bunny.set_pos(player.center)
         current_coords = (0, 0)
         score = 0
         lives = LIVES_START
@@ -130,7 +136,11 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 if keys[pygame.K_s] or keys[pygame.K_DOWN]:
                     dy = PLAYER_SPEED * dt
 
+                bunny.set_velocity((dx / dt if dx != 0 else 0, dy / dt if dy != 0 else 0))
+                bunny.update(dt * 1000)
+
                 move_with_collision(player, room["blocks"], dx, dy)
+                bunny.set_pos(player.center)
 
                 # portals
                 for side, p_rect in room["portals"].items():
@@ -243,6 +253,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             for carrot in room["carrots"]:
                 pygame.draw.circle(WIN, (255, 165, 0), (carrot.centerx + cx, carrot.centery + cy), 12)
 
+<<<<<<< HEAD
             # player blink while invincible (optional but helpful)
             draw_player = True
             if invuln_timer > 0:
@@ -254,6 +265,14 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 pygame.draw.rect(WIN, WHITE, player.move(cx, cy))
 
             # foxes (shaken)
+=======
+            # player + foxes (shaken)
+            #pygame.draw.rect(WIN, WHITE, player.move(cx, cy))
+            bunny_pos = bunny.get_pos()
+            bunny.set_pos((bunny_pos[0] + cx, bunny_pos[1] + cy))
+            bunny.draw(WIN)
+            bunny.set_pos(bunny_pos)
+>>>>>>> 9813018947af2ac89f0a83a6b026bcec37cd3b07
             for fox in room["foxes"]:
                 pygame.draw.rect(WIN, (255, 50, 50), fox.move(cx, cy))
 

@@ -33,3 +33,16 @@ SHAKE_INTENSITY_FOX = 14
 
 SHAKE_DURATION_TRAP = 0.20
 SHAKE_INTENSITY_TRAP = 10
+
+# Invincibility + knockback
+INVINCIBILITY_DURATION = 3.0
+KNOCKBACK_PIXELS = 70
+
+# ---------------- NEW (from Jon): DASH + SPEED BOOST ----------------
+DASH_SPEED = 1800
+DASH_DURATION = 0.15
+DASH_COOLDOWN = 1.5
+
+# Speed boost milestones (like Jon)
+SPEED_BOOST_SCORE_1 = 5
+SPEED_BOOST_MULT_1 = 1.25

@@ -1,4 +1,3 @@
-
 import random
 import math
 import pygame
@@ -11,6 +10,10 @@ def get_funny_name() -> str:
     return f"{random.choice(ADJECTIVES)} {random.choice(NOUNS)}"
 
 room_data = {}
+
+def reset_world():
+    """Clears cached rooms so a new run starts completely fresh."""
+    room_data.clear()
 
 def generate_room(coords):
     if coords not in room_data:

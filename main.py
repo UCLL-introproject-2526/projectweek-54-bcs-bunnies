@@ -19,9 +19,9 @@ def main():
     pygame.display.set_caption("Bunnies Beta v1.0")
 
     # Fonts
-    FONT = pygame.font.SysFont("comicsans", 30, bold=True)
-    BIG_FONT = pygame.font.SysFont("comicsans", 48, bold=True)
-    END_FONT = pygame.font.SysFont("comicsans", 80, bold=True)
+    FONT = pygame.font.SysFont("pixelfont.ttf", 30, bold=True)
+    BIG_FONT = pygame.font.SysFont("pixelfont.ttf", 48, bold=True)
+    END_FONT = pygame.font.SysFont("pixelfont.ttf", 80, bold=True)
 
     # Backgrounds (safe load)
     MENU_BG = safe_load_bg("images/menu_background.png", (30, 120, 80))

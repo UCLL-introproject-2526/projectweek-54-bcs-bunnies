@@ -1,6 +1,7 @@
 import pygame
 import random
 import math
+import os
 
 from settings import (
     WIDTH, HEIGHT, FPS,
@@ -37,6 +38,10 @@ def _knockback(player: pygame.Rect, source_center, blocks, pixels: int):
 
 def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.Font) -> str:
     clock = pygame.time.Clock()
+
+    #Foxes
+    fox_files = sorted(os.listdir("images/fox"))
+    fox_images = [pygame.image.load(os.path.join("images/fox", f)).convert_alpha() for f in fox_files]
 
     # Pause resume button (under PAUSED)
     RESUME_IMG = scale_to_width(safe_load_png(
@@ -189,10 +194,15 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                             break
 
                 # fox AI
-                for fox in room["foxes"]:
+                for i, fox in enumerate(room["foxes"]):
                     fdx = (FOX_SPEED * dt) if fox.x < player.x else (-FOX_SPEED * dt)
                     fdy = (FOX_SPEED * dt) if fox.y < player.y else (-FOX_SPEED * dt)
                     move_with_collision(fox, room["blocks"], fdx, fdy)
+                    direction = 1 if fdx > 0 else (-1 if fdx < 0 else room["fox_directions"][i])
+                    room["fox_directions"][i] = direction
+                    room["fox_frames"][i] = (room["fox_frames"][i] + 1) % len(fox_images)
+
+                 
 
                     if invuln_timer <= 0 and fox.colliderect(player):
                         lives -= 1
@@ -214,6 +224,8 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                                 fox.height
                             )
                         )
+                        room["fox_frames"].append(0)
+                        room["fox_directions"].append(1)
 
                         if lives <= 0:
                             state = "LOST"
@@ -312,8 +324,12 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 bunny.set_pos(base_center)
 
             # foxes
-            for fox in room["foxes"]:
-                pygame.draw.rect(WIN, (255, 50, 50), fox.move(cx, cy))
+            for i, fox in enumerate(room["foxes"]):
+                img = fox_images[room["fox_frames"][i]]
+                if room["fox_directions"][i] == -1:
+                    img = pygame.transform.flip(img, True, False)
+                rect = img.get_rect(center=(fox.centerx + cx, fox.centery + cy))
+                WIN.blit(img, rect)
 
             # red flash overlay
             if hit_flash_timer > 0:

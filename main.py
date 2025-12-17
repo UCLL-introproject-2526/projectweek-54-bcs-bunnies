@@ -1,11 +1,12 @@
 import pygame
 import sys
+import os
 
 from settings import WIDTH, HEIGHT, FPS, WHITE, BLACK
 from ui import ImageButton, safe_load_bg, safe_load_png, scale_to_width, draw_text_outline
 from game import run_game
 
-# States
+# Statessd
 MENU = "menu"
 HOWTO = "howto"
 

@@ -2,6 +2,7 @@
 import pygame
 from settings import WIDTH, HEIGHT
 
+
 def scale_to_width(image: pygame.Surface, target_width: int, *, smooth: bool = False) -> pygame.Surface:
     w, h = image.get_size()
     if w == 0:
@@ -9,6 +10,7 @@ def scale_to_width(image: pygame.Surface, target_width: int, *, smooth: bool = F
     scale = target_width / w
     new_size = (max(1, int(w * scale)), max(1, int(h * scale)))
     return pygame.transform.smoothscale(image, new_size) if smooth else pygame.transform.scale(image, new_size)
+
 
 def safe_load_bg(path: str, fallback_color=(40, 80, 40)) -> pygame.Surface:
     try:
@@ -19,6 +21,7 @@ def safe_load_bg(path: str, fallback_color=(40, 80, 40)) -> pygame.Surface:
         surf = pygame.Surface((WIDTH, HEIGHT))
         surf.fill(fallback_color)
         return surf
+
 
 def safe_load_shader(path: str, fallback_color=(40, 80, 40)) -> pygame.Surface:
     try:
@@ -42,6 +45,7 @@ def safe_load_png(path: str) -> pygame.Surface:
         pygame.draw.rect(surf, (60, 60, 60), surf.get_rect(), border_radius=12)
         return surf
 
+
 def draw_text_outline(surface: pygame.Surface, text: str, font: pygame.font.Font,
                       text_color, outline_color, *, center=None, pos=None, outline_thickness: int = 2):
     base = font.render(text, True, text_color)
@@ -60,6 +64,7 @@ def draw_text_outline(surface: pygame.Surface, text: str, font: pygame.font.Font
             if dx != 0 or dy != 0:
                 surface.blit(outline, (x + dx, y + dy))
     surface.blit(base, (x, y))
+
 
 class ImageButton:
     def __init__(self, image: pygame.Surface, center):

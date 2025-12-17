@@ -39,16 +39,19 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
     clock = pygame.time.Clock()
 
     # Pause resume button (under PAUSED)
-    RESUME_IMG = scale_to_width(safe_load_png("images/back_button.png"), 260, smooth=False)
+    RESUME_IMG = scale_to_width(safe_load_png(
+        "images/back_button.png"), 260, smooth=False)
     resume_btn = ImageButton(RESUME_IMG, (WIDTH // 2, HEIGHT // 2 + 140))
 
     while True:  # restart loop
         reset_world()
 
-        player = pygame.Rect(WIDTH // 2, HEIGHT // 2, PLAYER_WIDTH, PLAYER_HEIGHT)
+        player = pygame.Rect(WIDTH // 2, HEIGHT // 2,
+                             PLAYER_WIDTH, PLAYER_HEIGHT)
 
         # ✅ Bunny sprite that replaces the white rect
-        bunny = Bunny(player.center, white_square_size=(PLAYER_WIDTH, PLAYER_HEIGHT))
+        bunny = Bunny(player.center, white_square_size=(
+            PLAYER_WIDTH, PLAYER_HEIGHT))
 
         current_coords = (0, 0)
         score = 0
@@ -86,13 +89,19 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             room = generate_room(current_coords)
 
             # timers decay
-            if hit_flash_timer > 0: hit_flash_timer = max(0.0, hit_flash_timer - dt)
-            if shake_timer > 0:     shake_timer = max(0.0, shake_timer - dt)
-            if trap_cooldown > 0:   trap_cooldown = max(0.0, trap_cooldown - dt)
-            if invuln_timer > 0:    invuln_timer = max(0.0, invuln_timer - dt)
+            if hit_flash_timer > 0:
+                hit_flash_timer = max(0.0, hit_flash_timer - dt)
+            if shake_timer > 0:
+                shake_timer = max(0.0, shake_timer - dt)
+            if trap_cooldown > 0:
+                trap_cooldown = max(0.0, trap_cooldown - dt)
+            if invuln_timer > 0:
+                invuln_timer = max(0.0, invuln_timer - dt)
 
-            if dash_timer > 0:      dash_timer = max(0.0, dash_timer - dt)
-            if dash_cooldown > 0:   dash_cooldown = max(0.0, dash_cooldown - dt)
+            if dash_timer > 0:
+                dash_timer = max(0.0, dash_timer - dt)
+            if dash_cooldown > 0:
+                dash_cooldown = max(0.0, dash_cooldown - dt)
 
             # ---------------- EVENTS ----------------
             for event in pygame.event.get():
@@ -126,10 +135,14 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 keys = pygame.key.get_pressed()
 
                 # input direction
-                if keys[pygame.K_a] or keys[pygame.K_LEFT]:  ix = -1.0
-                if keys[pygame.K_d] or keys[pygame.K_RIGHT]: ix =  1.0
-                if keys[pygame.K_w] or keys[pygame.K_UP]:    iy = -1.0
-                if keys[pygame.K_s] or keys[pygame.K_DOWN]:  iy =  1.0
+                if keys[pygame.K_a] or keys[pygame.K_LEFT]:
+                    ix = -1.0
+                if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
+                    ix = 1.0
+                if keys[pygame.K_w] or keys[pygame.K_UP]:
+                    iy = -1.0
+                if keys[pygame.K_s] or keys[pygame.K_DOWN]:
+                    iy = 1.0
 
                 # dash (SPACE)
                 if keys[pygame.K_SPACE] and dash_cooldown <= 0 and (ix != 0.0 or iy != 0.0):
@@ -139,8 +152,10 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 # speed boost milestone
                 speed_boost = SPEED_BOOST_MULT_1 if score >= SPEED_BOOST_SCORE_1 else 1.0
 
-                final_speed = (DASH_SPEED if dash_timer > 0 else PLAYER_SPEED) * speed_boost
-                move_with_collision(player, room["blocks"], ix * final_speed * dt, iy * final_speed * dt)
+                final_speed = (DASH_SPEED if dash_timer >
+                               0 else PLAYER_SPEED) * speed_boost
+                move_with_collision(
+                    player, room["blocks"], ix * final_speed * dt, iy * final_speed * dt)
 
                 # start portal fade (don’t switch instantly)
                 for side, p_rect in room["portals"].items():
@@ -157,12 +172,15 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         if player.colliderect(trap):
                             lives -= 1
 
-                            hit_flash_timer = max(hit_flash_timer, HIT_FLASH_DURATION)
+                            hit_flash_timer = max(
+                                hit_flash_timer, HIT_FLASH_DURATION)
                             shake_timer = max(shake_timer, SHAKE_DURATION_TRAP)
-                            shake_intensity = max(shake_intensity, SHAKE_INTENSITY_TRAP)
+                            shake_intensity = max(
+                                shake_intensity, SHAKE_INTENSITY_TRAP)
 
                             invuln_timer = INVINCIBILITY_DURATION
-                            _knockback(player, trap.center, room["blocks"], KNOCKBACK_PIXELS)
+                            _knockback(player, trap.center,
+                                       room["blocks"], KNOCKBACK_PIXELS)
 
                             trap_cooldown = 0.6
 
@@ -184,7 +202,8 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         shake_intensity = SHAKE_INTENSITY_FOX
 
                         invuln_timer = INVINCIBILITY_DURATION
-                        _knockback(player, fox.center, room["blocks"], KNOCKBACK_PIXELS)
+                        _knockback(player, fox.center,
+                                   room["blocks"], KNOCKBACK_PIXELS)
 
                         # keep your “spawn another fox” logic
                         room["foxes"].append(
@@ -222,7 +241,8 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                     if transition_alpha >= 255:
                         transition_alpha = 255
                         if pending_portal_side is not None:
-                            current_coords = portal_transition(pending_portal_side, current_coords, player)
+                            current_coords = portal_transition(
+                                pending_portal_side, current_coords, player)
                         pending_portal_side = None
                         transition_phase = "in"
                 else:
@@ -242,9 +262,11 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
 
             # portal glow
             pulse_val = (math.sin(pulse_timer) + 1) / 2
-            glow_color = (0, 200 + int(55 * pulse_val), 200 + int(55 * pulse_val))
+            glow_color = (0, 200 + int(55 * pulse_val),
+                          200 + int(55 * pulse_val))
             for p_rect in room["portals"].values():
-                glow_rect = p_rect.inflate(int(10 * pulse_val), int(10 * pulse_val)).move(cx, cy)
+                glow_rect = p_rect.inflate(
+                    int(10 * pulse_val), int(10 * pulse_val)).move(cx, cy)
                 pygame.draw.ellipse(WIN, WHITE, glow_rect)
                 pygame.draw.ellipse(WIN, glow_color, p_rect.move(cx, cy))
 
@@ -254,8 +276,10 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 if block.width == WIDTH or block.height == HEIGHT:
                     pygame.draw.rect(WIN, (30, 30, 30), b)
                 elif room["theme"] == "trees":
-                    pygame.draw.rect(WIN, (80, 50, 20), (b.centerx - 10, b.centery, 20, 40))
-                    pygame.draw.circle(WIN, (20, 100, 20), (b.centerx, b.centery), 40)
+                    pygame.draw.rect(WIN, (80, 50, 20),
+                                     (b.centerx - 10, b.centery, 20, 40))
+                    pygame.draw.circle(WIN, (20, 100, 20),
+                                       (b.centerx, b.centery), 40)
                 elif room["theme"] == "rocks":
                     pygame.draw.rect(WIN, (100, 100, 100), b, border_radius=20)
                 else:
@@ -267,11 +291,13 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
 
             # traps
             for trap in room.get("traps", []):
-                pygame.draw.circle(WIN, (150, 0, 0), (trap.centerx + cx, trap.centery + cy), 20, 5)
+                pygame.draw.circle(
+                    WIN, (150, 0, 0), (trap.centerx + cx, trap.centery + cy), 20, 5)
 
             # carrots
             for carrot in room["carrots"]:
-                pygame.draw.circle(WIN, (255, 165, 0), (carrot.centerx + cx, carrot.centery + cy), 12)
+                pygame.draw.circle(
+                    WIN, (255, 165, 0), (carrot.centerx + cx, carrot.centery + cy), 12)
 
             # invincibility blink
             blink_hide = False
@@ -306,15 +332,19 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
 
             # UI
             ui = f"Lives: {lives} | Score: {score}/{TARGET_SCORE} | Location: {room['name']}"
-            draw_text_outline(WIN, ui, FONT, WHITE, BLACK, pos=(30, 30), outline_thickness=2)
+            draw_text_outline(WIN, ui, FONT, WHITE, BLACK,
+                              pos=(30, 30), outline_thickness=2)
 
             if speed_boost > 1.0:
-                draw_text_outline(WIN, "SNEAKERS ACTIVE", FONT, (0, 255, 0), BLACK, pos=(30, 60), outline_thickness=2)
+                draw_text_outline(WIN, "SNEAKERS ACTIVE", FONT, (0, 255, 0), BLACK, pos=(
+                    30, 60), outline_thickness=2)
 
             if dash_cooldown <= 0:
-                draw_text_outline(WIN, "DASH READY (SPACE)", FONT, (255, 255, 255), BLACK, pos=(30, 90), outline_thickness=2)
+                draw_text_outline(WIN, "DASH READY (SPACE)", FONT, (255, 255, 255), BLACK, pos=(
+                    30, 90), outline_thickness=2)
             else:
-                draw_text_outline(WIN, f"DASH COOLDOWN: {dash_cooldown:.1f}s", FONT, (200, 200, 200), BLACK, pos=(30, 90), outline_thickness=2)
+                draw_text_outline(WIN, f"DASH COOLDOWN: {dash_cooldown:.1f}s", FONT, (
+                    200, 200, 200), BLACK, pos=(30, 90), outline_thickness=2)
 
             # PAUSE
             if state == "PAUSED":

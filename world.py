@@ -2,22 +2,29 @@ import random
 import pygame
 from settings import WIDTH, HEIGHT, BLOCK_SIZE, PORTAL_SIZE, FOX_WIDTH, FOX_HEIGHT
 
-ADJECTIVES = ["Stinky", "Glorious", "Slippery", "Angry", "Cabbage-Scented", "Mildly Annoying", "Shiny", "Suspicious", "Fluffy", "Extreme"]
-NOUNS = ["Armpit", "Basement", "Toilet", "Paradise", "Doom", "Garden", "Lair", "Swamp", "Elevator", "Buffet"]
+ADJECTIVES = ["Stinky", "Glorious", "Slippery", "Angry", "Cabbage-Scented",
+              "Mildly Annoying", "Shiny", "Suspicious", "Fluffy", "Extreme"]
+NOUNS = ["Armpit", "Basement", "Toilet", "Paradise",
+         "Doom", "Garden", "Lair", "Swamp", "Elevator", "Buffet"]
+
 
 def get_funny_name() -> str:
     return f"{random.choice(ADJECTIVES)} {random.choice(NOUNS)}"
 
+
 room_data = {}
+
 
 def reset_world():
     room_data.clear()
+
 
 def safe_load_png(path: str):
     try:
         return pygame.image.load(path).convert_alpha()
     except:
         return None
+
 
 def scale_to_max(img: pygame.Surface, max_w: int, max_h: int) -> pygame.Surface:
     w, h = img.get_size()
@@ -26,6 +33,7 @@ def scale_to_max(img: pygame.Surface, max_w: int, max_h: int) -> pygame.Surface:
     scale = min(max_w / w, max_h / h)
     new_size = (max(1, int(w * scale)), max(1, int(h * scale)))
     return pygame.transform.smoothscale(img, new_size)
+
 
 def make_obstacle(img: pygame.Surface, x: int, y: int, kind: str):
     draw_rect = img.get_rect(topleft=(x, y))
@@ -45,13 +53,16 @@ def make_obstacle(img: pygame.Surface, x: int, y: int, kind: str):
 
     return {"img": img, "draw_rect": draw_rect, "coll_rect": coll, "kind": kind}
 
+
 def theme_index(coords):
     x, y = coords
     return abs(x * 31 + y * 17) % 3  # 0..2
 
+
 def generate_room(coords):
     if coords not in room_data:
-        bg_colors = [(34, 139, 34), (101, 67, 33), (20, 80, 80), (107, 142, 35), (47, 79, 79)]
+        bg_colors = [(34, 139, 34), (101, 67, 33), (20, 80, 80),
+                     (107, 142, 35), (47, 79, 79)]
         theme = random.choice(["trees", "rocks", "blocks"])
 
         blocks = []
@@ -77,8 +88,10 @@ def generate_room(coords):
             if not block_rect.colliderect(safe_zone):
                 blocks.append(block_rect)
 
-        foxes = [pygame.Rect(random.randint(100, 300), random.randint(100, 600), FOX_WIDTH, FOX_HEIGHT)]
-        carrots = [pygame.Rect(random.randint(100, 1100), random.randint(100, 600), 25, 25) for _ in range(random.randint(3, 6))]
+        foxes = [pygame.Rect(random.randint(100, 300),
+                             random.randint(100, 600), FOX_WIDTH, FOX_HEIGHT)]
+        carrots = [pygame.Rect(random.randint(100, 1100), random.randint(
+            100, 600), 25, 25) for _ in range(random.randint(3, 6))]
 
         portals = {
             "top": pygame.Rect(WIDTH//2 - PORTAL_SIZE//2, 0, PORTAL_SIZE, 30),
@@ -93,9 +106,11 @@ def generate_room(coords):
         bush_img = safe_load_png(f"images/bush_sheet_room{idx+1}.png")
 
         if tree_img is None:
-            tree_img = pygame.Surface((96, 96), pygame.SRCALPHA); tree_img.fill((40, 140, 40))
+            tree_img = pygame.Surface((96, 96), pygame.SRCALPHA)
+            tree_img.fill((40, 140, 40))
         if bush_img is None:
-            bush_img = pygame.Surface((80, 80), pygame.SRCALPHA); bush_img.fill((20, 110, 20))
+            bush_img = pygame.Surface((80, 80), pygame.SRCALPHA)
+            bush_img.fill((20, 110, 20))
 
         tree_scaled = scale_to_max(tree_img, max_w=110, max_h=110)
         bush_scaled = scale_to_max(bush_img, max_w=85,  max_h=85)
@@ -164,27 +179,37 @@ def generate_room(coords):
         }
     return room_data[coords]
 
+
 def move_with_collision(rect: pygame.Rect, blocks, dx: float, dy: float):
     rect.x += int(dx)
     for block in blocks:
         if rect.colliderect(block):
-            if dx > 0: rect.right = block.left
-            if dx < 0: rect.left = block.right
+            if dx > 0:
+                rect.right = block.left
+            if dx < 0:
+                rect.left = block.right
 
     rect.y += int(dy)
     for block in blocks:
         if rect.colliderect(block):
-            if dy > 0: rect.bottom = block.top
-            if dy < 0: rect.top = block.bottom
+            if dy > 0:
+                rect.bottom = block.top
+            if dy < 0:
+                rect.top = block.bottom
+
 
 def portal_transition(side: str, coords, player: pygame.Rect):
     x, y = coords
     if side == "top":
-        coords = (x, y + 1); player.y = HEIGHT - 120
+        coords = (x, y + 1)
+        player.y = HEIGHT - 120
     elif side == "bottom":
-        coords = (x, y - 1); player.y = 120
+        coords = (x, y - 1)
+        player.y = 120
     elif side == "left":
-        coords = (x - 1, y); player.x = WIDTH - 120
+        coords = (x - 1, y)
+        player.x = WIDTH - 120
     elif side == "right":
-        coords = (x + 1, y); player.x = 120
+        coords = (x + 1, y)
+        player.x = 120
     return coords

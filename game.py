@@ -253,26 +253,12 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             for carrot in room["carrots"]:
                 pygame.draw.circle(WIN, (255, 165, 0), (carrot.centerx + cx, carrot.centery + cy), 12)
 
-<<<<<<< HEAD
-            # player blink while invincible (optional but helpful)
-            draw_player = True
-            if invuln_timer > 0:
-                # blink ~10 times/sec
-                if int(invuln_timer * 10) % 2 == 0:
-                    draw_player = False
-
-            if draw_player:
-                pygame.draw.rect(WIN, WHITE, player.move(cx, cy))
-
-            # foxes (shaken)
-=======
             # player + foxes (shaken)
             #pygame.draw.rect(WIN, WHITE, player.move(cx, cy))
             bunny_pos = bunny.get_pos()
             bunny.set_pos((bunny_pos[0] + cx, bunny_pos[1] + cy))
             bunny.draw(WIN)
             bunny.set_pos(bunny_pos)
->>>>>>> 9813018947af2ac89f0a83a6b026bcec37cd3b07
             for fox in room["foxes"]:
                 pygame.draw.rect(WIN, (255, 50, 50), fox.move(cx, cy))
 

@@ -15,8 +15,10 @@ from settings import (
     DASH_SPEED, DASH_DURATION, DASH_COOLDOWN,
     SPEED_BOOST_SCORE_1, SPEED_BOOST_MULT_1
 )
+
 from ui import draw_text_outline, ImageButton, safe_load_png, scale_to_width
 from world import generate_room, move_with_collision, portal_transition, reset_world
+from bunny import Bunny  # ✅ NEW
 
 
 def _knockback(player: pygame.Rect, source_center, blocks, pixels: int):
@@ -44,6 +46,10 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
         reset_world()
 
         player = pygame.Rect(WIDTH // 2, HEIGHT // 2, PLAYER_WIDTH, PLAYER_HEIGHT)
+
+        # ✅ Bunny sprite that replaces the white rect
+        bunny = Bunny(player.center, white_square_size=(PLAYER_WIDTH, PLAYER_HEIGHT))
+
         current_coords = (0, 0)
         score = 0
         lives = LIVES_START
@@ -59,21 +65,21 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
         trap_cooldown = 0.0
         invuln_timer = 0.0
 
-        # DASH + SPEED BOOST
+        # dash + speed boost
         dash_timer = 0.0
         dash_cooldown = 0.0
         speed_boost = 1.0
 
-        # -------- NEW (Jon): ROOM TRANSITION FADE --------
+        # room transition fade (Jon style)
         transition_alpha = 0
         is_transitioning = False
-        transition_phase = "out"  # "out" then "in"
+        transition_phase = "out"     # "out" then "in"
         pending_portal_side = None
 
         while True:
             dt = clock.tick(FPS) / 1000.0
+            dt_ms = dt * 1000.0
 
-            # Only animate pulse timer while actually playing and not transitioning
             if state == "PLAYING" and not is_transitioning:
                 pulse_timer += dt * 5.0
 
@@ -93,7 +99,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 if event.type == pygame.QUIT:
                     return "quit"
 
-                # ESC toggles pause/resume (but not during room transition)
+                # ESC toggles pause/resume (not during transition)
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                     if not is_transitioning:
                         if state == "PLAYING":
@@ -101,7 +107,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         elif state == "PAUSED":
                             state = "PLAYING"
 
-                # While paused: ENTER resets game
+                # While paused: ENTER resets game (both Enter keys)
                 if state == "PAUSED" and event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                     state = "RESTART"
                     break
@@ -114,29 +120,29 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 break
 
             # ---------------- UPDATE ----------------
+            ix = iy = 0.0
+
             if state == "PLAYING" and not is_transitioning:
                 keys = pygame.key.get_pressed()
 
-                # direction input
-                ix = iy = 0.0
+                # input direction
                 if keys[pygame.K_a] or keys[pygame.K_LEFT]:  ix = -1.0
                 if keys[pygame.K_d] or keys[pygame.K_RIGHT]: ix =  1.0
                 if keys[pygame.K_w] or keys[pygame.K_UP]:    iy = -1.0
                 if keys[pygame.K_s] or keys[pygame.K_DOWN]:  iy =  1.0
 
-                # dash on SPACE
+                # dash (SPACE)
                 if keys[pygame.K_SPACE] and dash_cooldown <= 0 and (ix != 0.0 or iy != 0.0):
                     dash_timer = DASH_DURATION
                     dash_cooldown = DASH_COOLDOWN
 
                 # speed boost milestone
-                if score >= SPEED_BOOST_SCORE_1:
-                    speed_boost = SPEED_BOOST_MULT_1
+                speed_boost = SPEED_BOOST_MULT_1 if score >= SPEED_BOOST_SCORE_1 else 1.0
 
                 final_speed = (DASH_SPEED if dash_timer > 0 else PLAYER_SPEED) * speed_boost
                 move_with_collision(player, room["blocks"], ix * final_speed * dt, iy * final_speed * dt)
 
-                # -------- PORTALS -> START TRANSITION (not immediate switch) --------
+                # start portal fade (don’t switch instantly)
                 for side, p_rect in room["portals"].items():
                     if player.colliderect(p_rect):
                         is_transitioning = True
@@ -145,7 +151,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         pending_portal_side = side
                         break
 
-                # TRAPS: TAKE A LIFE + INVINCIBILITY + KNOCKBACK (NO TELEPORT)
+                # TRAPS: take life + invincibility + knockback (no teleport)
                 if invuln_timer <= 0 and trap_cooldown <= 0:
                     for trap in room.get("traps", []):
                         if player.colliderect(trap):
@@ -180,6 +186,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         invuln_timer = INVINCIBILITY_DURATION
                         _knockback(player, fox.center, room["blocks"], KNOCKBACK_PIXELS)
 
+                        # keep your “spawn another fox” logic
                         room["foxes"].append(
                             pygame.Rect(
                                 random.randint(100, 300),
@@ -201,13 +208,19 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         if score >= TARGET_SCORE:
                             state = "WON"
 
-            # -------- TRANSITION UPDATE (Jon fade) --------
+            # ✅ Bunny animation update (uses velocity for direction/frames)
+            # Bunny.update() moves bunny internally, so we update it for animation,
+            # then we snap its position back to the collision rect center.
+            bunny.set_velocity((ix * PLAYER_SPEED, iy * PLAYER_SPEED))
+            bunny.update(dt_ms)
+            bunny.set_pos(player.center)
+
+            # ---------------- TRANSITION UPDATE (fade) ----------------
             if is_transitioning and state == "PLAYING":
                 if transition_phase == "out":
                     transition_alpha += 15
                     if transition_alpha >= 255:
                         transition_alpha = 255
-                        # switch room at full black using YOUR portal_transition positioning
                         if pending_portal_side is not None:
                             current_coords = portal_transition(pending_portal_side, current_coords, player)
                         pending_portal_side = None
@@ -260,14 +273,17 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             for carrot in room["carrots"]:
                 pygame.draw.circle(WIN, (255, 165, 0), (carrot.centerx + cx, carrot.centery + cy), 12)
 
-            # invincibility blink + dash color
+            # invincibility blink
             blink_hide = False
             if invuln_timer > 0:
                 blink_hide = (pygame.time.get_ticks() // 100) % 2 == 0
 
+            # ✅ draw Bunny instead of white rect (with shake offset)
             if not blink_hide:
-                player_color = (0, 255, 255) if dash_timer > 0 else WHITE
-                pygame.draw.rect(WIN, player_color, player.move(cx, cy))
+                base_center = player.center
+                bunny.set_pos((base_center[0] + cx, base_center[1] + cy))
+                bunny.draw(WIN)
+                bunny.set_pos(base_center)
 
             # foxes
             for fox in room["foxes"]:
@@ -281,7 +297,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 flash.fill((255, 0, 0, alpha))
                 WIN.blit(flash, (0, 0))
 
-            # -------- Transition overlay (Jon fade to black) --------
+            # transition overlay
             if transition_alpha > 0:
                 o = pygame.Surface((WIDTH, HEIGHT))
                 o.set_alpha(transition_alpha)
@@ -292,7 +308,6 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             ui = f"Lives: {lives} | Score: {score}/{TARGET_SCORE} | Location: {room['name']}"
             draw_text_outline(WIN, ui, FONT, WHITE, BLACK, pos=(30, 30), outline_thickness=2)
 
-            # Dash UI
             if speed_boost > 1.0:
                 draw_text_outline(WIN, "SNEAKERS ACTIVE", FONT, (0, 255, 0), BLACK, pos=(30, 60), outline_thickness=2)
 
@@ -301,7 +316,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             else:
                 draw_text_outline(WIN, f"DASH COOLDOWN: {dash_cooldown:.1f}s", FONT, (200, 200, 200), BLACK, pos=(30, 90), outline_thickness=2)
 
-            # PAUSE screen
+            # PAUSE
             if state == "PAUSED":
                 overlay = pygame.Surface((WIDTH, HEIGHT))
                 overlay.set_alpha(180)

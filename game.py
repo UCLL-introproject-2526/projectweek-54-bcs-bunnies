@@ -8,7 +8,9 @@ from settings import (
     PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_SPEED,
     FOX_SPEED, LIVES_START, TARGET_SCORE,
     WHITE, BLACK,
-    HIT_FLASH_DURATION, HIT_FLASH_MAX_ALPHA
+    HIT_FLASH_DURATION, HIT_FLASH_MAX_ALPHA,
+    SHAKE_DURATION_FOX, SHAKE_INTENSITY_FOX,
+    SHAKE_DURATION_TRAP, SHAKE_INTENSITY_TRAP
 )
 from ui import draw_text_outline, ImageButton, safe_load_png, scale_to_width
 from world import generate_room, move_with_collision, portal_transition, reset_world
@@ -16,21 +18,20 @@ from world import generate_room, move_with_collision, portal_transition, reset_w
 
 def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.Font) -> str:
     """
-    ENTER on win/lose -> restart from beginning.
-    ESC key -> PAUSE toggle.
-    While PAUSED:
-      - Click button under "PAUSED" to RESUME
-      - Press ESC to RESUME
-      - Press ENTER to RESET (restart game fresh)
-    Red hit flash when fox touches you.
+    - ESC pauses/resumes
+    - Pause screen has button under PAUSED to resume
+    - ENTER while paused resets game
+    - ENTER on win/lose restarts
+    - NEW: screen shake on fox hit
+    - NEW: red circle traps (thorns)
     """
     clock = pygame.time.Clock()
 
-    # Button shown ONLY on pause screen (under the paused text)
+    # Button shown ONLY on pause screen (under the paused text) -> resumes
     RESUME_IMG = scale_to_width(safe_load_png("images/back_button.png"), 260, smooth=False)
     resume_btn = ImageButton(RESUME_IMG, (WIDTH // 2, HEIGHT // 2 + 140))
 
-    while True:  # restart loop (ENTER on win/lose, ENTER on pause reset)
+    while True:  # restart loop
         reset_world()
 
         player = pygame.Rect(WIDTH // 2, HEIGHT // 2, PLAYER_WIDTH, PLAYER_HEIGHT)
@@ -40,7 +41,15 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
         state = "PLAYING"   # PLAYING / PAUSED / WON / LOST
         pulse_timer = 0.0
 
+        # red hit flash
         hit_flash_timer = 0.0
+
+        # NEW: screen shake
+        shake_timer = 0.0
+        shake_intensity = 0
+
+        # NEW: trap cooldown (prevents instant re-trigger spam)
+        trap_cooldown = 0.0
 
         while True:
             dt = clock.tick(FPS) / 1000.0
@@ -50,25 +59,28 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
 
             room = generate_room(current_coords)
 
-            # fade red flash even while paused
+            # timers decay (even while paused so effects fade nicely)
             if hit_flash_timer > 0:
                 hit_flash_timer = max(0.0, hit_flash_timer - dt)
+            if shake_timer > 0:
+                shake_timer = max(0.0, shake_timer - dt)
+            if trap_cooldown > 0:
+                trap_cooldown = max(0.0, trap_cooldown - dt)
 
             # ---------------- EVENTS ----------------
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return "quit"
 
-                # ESC toggles pause/resume (only play/pause)
+                # ESC toggles pause/resume
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                     if state == "PLAYING":
                         state = "PAUSED"
                     elif state == "PAUSED":
                         state = "PLAYING"
 
-                # While paused: ENTER resets game
-                if state == "PAUSED" and event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                    # restart fresh: break inner loop -> outer while True restarts
+                # While paused: ENTER resets game (both Enter keys)
+                if state == "PAUSED" and event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                     state = "RESTART"
                     break
 
@@ -76,7 +88,6 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 if state == "PAUSED" and resume_btn.clicked(event):
                     state = "PLAYING"
 
-            # if we set restart flag from pause
             if state == "RESTART":
                 break
 
@@ -102,7 +113,20 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         room = generate_room(current_coords)
                         break
 
-                # fox AI (unchanged + red flash)
+                # NEW: traps (red circles)
+                if trap_cooldown <= 0:
+                    for trap in room.get("traps", []):
+                        if player.colliderect(trap):
+                            # Jon-style: flash + shake + respawn (no life loss)
+                            hit_flash_timer = max(hit_flash_timer, HIT_FLASH_DURATION)
+                            shake_timer = max(shake_timer, SHAKE_DURATION_TRAP)
+                            shake_intensity = max(shake_intensity, SHAKE_INTENSITY_TRAP)
+
+                            player.center = (WIDTH // 2, HEIGHT // 2)
+                            trap_cooldown = 0.5
+                            break
+
+                # fox AI (unchanged + shake added)
                 for fox in room["foxes"]:
                     fdx = (FOX_SPEED * dt) if fox.x < player.x else (-FOX_SPEED * dt)
                     fdy = (FOX_SPEED * dt) if fox.y < player.y else (-FOX_SPEED * dt)
@@ -110,8 +134,15 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
 
                     if fox.colliderect(player):
                         lives -= 1
+
+                        # red flash
                         hit_flash_timer = HIT_FLASH_DURATION
 
+                        # NEW: shake
+                        shake_timer = SHAKE_DURATION_FOX
+                        shake_intensity = SHAKE_INTENSITY_FOX
+
+                        # spawn another fox in this room (your logic stays)
                         room["foxes"].append(
                             pygame.Rect(
                                 random.randint(100, 300),
@@ -134,43 +165,54 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         if score >= TARGET_SCORE:
                             state = "WON"
 
+            # ---------------- SHAKE OFFSET ----------------
+            cx = cy = 0
+            if shake_timer > 0 and shake_intensity > 0:
+                cx = random.randint(-shake_intensity, shake_intensity)
+                cy = random.randint(-shake_intensity, shake_intensity)
+
             # ---------------- DRAW ----------------
             WIN.fill(room["color"])
 
-            # portal glow
+            # portal glow (shaken)
             pulse_val = (math.sin(pulse_timer) + 1) / 2
             glow_color = (0, 200 + int(55 * pulse_val), 200 + int(55 * pulse_val))
             for p_rect in room["portals"].values():
-                glow_rect = p_rect.inflate(int(10 * pulse_val), int(10 * pulse_val))
+                glow_rect = p_rect.inflate(int(10 * pulse_val), int(10 * pulse_val)).move(cx, cy)
                 pygame.draw.ellipse(WIN, WHITE, glow_rect)
-                pygame.draw.ellipse(WIN, glow_color, p_rect)
+                pygame.draw.ellipse(WIN, glow_color, p_rect.move(cx, cy))
 
-            # environment blocks
+            # environment blocks (shaken)
             for block in room["blocks"]:
+                b = block.move(cx, cy)
                 if block.width == WIDTH or block.height == HEIGHT:
-                    pygame.draw.rect(WIN, (30, 30, 30), block)
+                    pygame.draw.rect(WIN, (30, 30, 30), b)
                 elif room["theme"] == "trees":
-                    pygame.draw.rect(WIN, (80, 50, 20), (block.centerx - 10, block.centery, 20, 40))
-                    pygame.draw.circle(WIN, (20, 100, 20), (block.centerx, block.centery), 40)
+                    pygame.draw.rect(WIN, (80, 50, 20), (b.centerx - 10, b.centery, 20, 40))
+                    pygame.draw.circle(WIN, (20, 100, 20), (b.centerx, b.centery), 40)
                 elif room["theme"] == "rocks":
-                    pygame.draw.rect(WIN, (100, 100, 100), block, border_radius=20)
+                    pygame.draw.rect(WIN, (100, 100, 100), b, border_radius=20)
                 else:
-                    pygame.draw.rect(WIN, (139, 69, 19), block)
+                    pygame.draw.rect(WIN, (139, 69, 19), b)
 
-            # image obstacles
+            # image obstacles (shaken)
             for ob in room.get("obstacles", []):
-                WIN.blit(ob["img"], ob["draw_rect"])
+                WIN.blit(ob["img"], ob["draw_rect"].move(cx, cy))
 
-            # carrots
+            # traps (red circles) (shaken)
+            for trap in room.get("traps", []):
+                pygame.draw.circle(WIN, (150, 0, 0), (trap.centerx + cx, trap.centery + cy), 20, 5)
+
+            # carrots (shaken)
             for carrot in room["carrots"]:
-                pygame.draw.circle(WIN, (255, 165, 0), carrot.center, 12)
+                pygame.draw.circle(WIN, (255, 165, 0), (carrot.centerx + cx, carrot.centery + cy), 12)
 
-            # player + foxes
-            pygame.draw.rect(WIN, WHITE, player)
+            # player + foxes (shaken)
+            pygame.draw.rect(WIN, WHITE, player.move(cx, cy))
             for fox in room["foxes"]:
-                pygame.draw.rect(WIN, (255, 50, 50), fox)
+                pygame.draw.rect(WIN, (255, 50, 50), fox.move(cx, cy))
 
-            # red flash overlay
+            # red flash overlay (NOT shaken)
             if hit_flash_timer > 0:
                 strength = hit_flash_timer / HIT_FLASH_DURATION
                 alpha = int(HIT_FLASH_MAX_ALPHA * strength)
@@ -178,7 +220,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 flash.fill((255, 0, 0, alpha))
                 WIN.blit(flash, (0, 0))
 
-            # UI
+            # UI (NOT shaken, so readable)
             ui = f"Lives: {lives} | Score: {score}/{TARGET_SCORE} | Location: {room['name']}"
             draw_text_outline(WIN, ui, FONT, WHITE, BLACK, pos=(30, 30), outline_thickness=2)
 
@@ -196,7 +238,6 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 draw_text_outline(WIN, "ENTER = Reset game", FONT, WHITE, BLACK,
                                   center=(WIDTH // 2, HEIGHT // 2 + 60), outline_thickness=2)
 
-                # button under the text (resumes)
                 resume_btn.draw(WIN)
 
                 pygame.display.flip()

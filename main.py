@@ -10,6 +10,7 @@ from game import run_game
 MENU = "menu"
 HOWTO = "howto"
 
+
 def main():
     pygame.init()
     pygame.font.init()
@@ -28,16 +29,20 @@ def main():
 
     # Buttons (safe load + scale)
     TARGET_BTN_WIDTH = 480
-    PLAY_IMG = scale_to_width(safe_load_png("images/play_button.png"), TARGET_BTN_WIDTH, smooth=False)
-    HOW_IMG  = scale_to_width(safe_load_png("images/howtoplay_button.png"), TARGET_BTN_WIDTH, smooth=False)
-    QUIT_IMG = scale_to_width(safe_load_png("images/quit_button.png"), TARGET_BTN_WIDTH, smooth=False)
+    PLAY_IMG = scale_to_width(safe_load_png(
+        "images/play_button.png"), TARGET_BTN_WIDTH, smooth=False)
+    HOW_IMG = scale_to_width(safe_load_png(
+        "images/howtoplay_button.png"), TARGET_BTN_WIDTH, smooth=False)
+    QUIT_IMG = scale_to_width(safe_load_png(
+        "images/quit_button.png"), TARGET_BTN_WIDTH, smooth=False)
 
     BACK_BTN_WIDTH = 320
-    BACK_IMG = scale_to_width(safe_load_png("images/back_button.png"), BACK_BTN_WIDTH, smooth=False)
+    BACK_IMG = scale_to_width(safe_load_png(
+        "images/back_button.png"), BACK_BTN_WIDTH, smooth=False)
 
     # Position buttons
     play_btn = ImageButton(PLAY_IMG, (WIDTH // 2, 470))
-    how_btn  = ImageButton(HOW_IMG,  (WIDTH // 2, 565))
+    how_btn = ImageButton(HOW_IMG,  (WIDTH // 2, 565))
     quit_btn = ImageButton(QUIT_IMG, (WIDTH // 2, 660))
     back_btn = ImageButton(BACK_IMG, (WIDTH // 2, 620))
 
@@ -88,11 +93,13 @@ def main():
 
         elif state == HOWTO:
             WIN.blit(HOWTO_BG, (0, 0))
-            draw_text_outline(WIN, "HOW TO PLAY", BIG_FONT, WHITE, BLACK, center=(WIDTH//2, 120), outline_thickness=3)
+            draw_text_outline(WIN, "HOW TO PLAY", BIG_FONT, WHITE, BLACK, center=(
+                WIDTH//2, 120), outline_thickness=3)
 
             y = 220
             for line in howto_lines:
-                draw_text_outline(WIN, line, FONT, WHITE, BLACK, center=(WIDTH//2, y), outline_thickness=2)
+                draw_text_outline(WIN, line, FONT, WHITE, BLACK, center=(
+                    WIDTH//2, y), outline_thickness=2)
                 y += 42
 
             back_btn.draw(WIN)
@@ -101,6 +108,7 @@ def main():
 
     pygame.quit()
     sys.exit()
+
 
 if __name__ == "__main__":
     main()

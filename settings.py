@@ -1,4 +1,3 @@
-
 import pygame
 
 # Window
@@ -25,5 +24,12 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
 # Hit / damage flash effect
-HIT_FLASH_DURATION = 0.25   # seconds (0.2–0.35 feels good)
-HIT_FLASH_MAX_ALPHA = 120   # 0–255 (higher = stronger red)
+HIT_FLASH_DURATION = 0.25   # seconds
+HIT_FLASH_MAX_ALPHA = 120   # 0–255
+
+# Screen shake (Jon-style)
+SHAKE_DURATION_FOX = 0.25
+SHAKE_INTENSITY_FOX = 14
+
+SHAKE_DURATION_TRAP = 0.20
+SHAKE_INTENSITY_TRAP = 10

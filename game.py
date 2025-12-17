@@ -1,5 +1,4 @@
 import pygame
-import time
 import random
 import math
 
@@ -10,10 +9,30 @@ from settings import (
     WHITE, BLACK,
     HIT_FLASH_DURATION, HIT_FLASH_MAX_ALPHA,
     SHAKE_DURATION_FOX, SHAKE_INTENSITY_FOX,
-    SHAKE_DURATION_TRAP, SHAKE_INTENSITY_TRAP
+    SHAKE_DURATION_TRAP, SHAKE_INTENSITY_TRAP,
+    INVINCIBILITY_DURATION, KNOCKBACK_PIXELS
 )
 from ui import draw_text_outline, ImageButton, safe_load_png, scale_to_width
 from world import generate_room, move_with_collision, portal_transition, reset_world
+
+
+def _knockback(player: pygame.Rect, source_center, blocks, pixels: int):
+    """Push player away from source_center by 'pixels', respecting collisions."""
+    sx, sy = source_center
+    px, py = player.centerx, player.centery
+    vx, vy = (px - sx), (py - sy)
+
+    # if perfectly overlapping, pick a random direction
+    if vx == 0 and vy == 0:
+        vx = random.choice([-1, 1])
+        vy = random.choice([-1, 1])
+
+    length = math.hypot(vx, vy)
+    nx, ny = vx / length, vy / length
+
+    dx = nx * pixels
+    dy = ny * pixels
+    move_with_collision(player, blocks, dx, dy)
 
 
 def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.Font) -> str:
@@ -22,8 +41,10 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
     - Pause screen has button under PAUSED to resume
     - ENTER while paused resets game
     - ENTER on win/lose restarts
-    - NEW: screen shake on fox hit
-    - NEW: red circle traps (thorns)
+    - Screen shake + red flash on hits
+    - Traps are red circles
+    - NEW: NO teleport on hit, knockback instead
+    - NEW: 3s invincibility after hit (fox or trap)
     """
     clock = pygame.time.Clock()
 
@@ -44,12 +65,15 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
         # red hit flash
         hit_flash_timer = 0.0
 
-        # NEW: screen shake
+        # screen shake
         shake_timer = 0.0
         shake_intensity = 0
 
-        # NEW: trap cooldown (prevents instant re-trigger spam)
+        # trap cooldown (prevents spam)
         trap_cooldown = 0.0
+
+        # NEW: invincibility timer
+        invuln_timer = 0.0
 
         while True:
             dt = clock.tick(FPS) / 1000.0
@@ -66,6 +90,8 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 shake_timer = max(0.0, shake_timer - dt)
             if trap_cooldown > 0:
                 trap_cooldown = max(0.0, trap_cooldown - dt)
+            if invuln_timer > 0:
+                invuln_timer = max(0.0, invuln_timer - dt)
 
             # ---------------- EVENTS ----------------
             for event in pygame.event.get():
@@ -113,36 +139,47 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         room = generate_room(current_coords)
                         break
 
-                # NEW: traps (red circles)
-                if trap_cooldown <= 0:
+                # --- traps (red circles) ---
+                # Only trigger if not invincible, and cooldown passed.
+                if invuln_timer <= 0 and trap_cooldown <= 0:
                     for trap in room.get("traps", []):
                         if player.colliderect(trap):
-                            # Jon-style: flash + shake + respawn (no life loss)
+                            # effects
                             hit_flash_timer = max(hit_flash_timer, HIT_FLASH_DURATION)
                             shake_timer = max(shake_timer, SHAKE_DURATION_TRAP)
                             shake_intensity = max(shake_intensity, SHAKE_INTENSITY_TRAP)
 
-                            player.center = (WIDTH // 2, HEIGHT // 2)
-                            trap_cooldown = 0.5
+                            # NEW: invincibility
+                            invuln_timer = INVINCIBILITY_DURATION
+
+                            # NEW: knockback away from trap (no teleport)
+                            _knockback(player, trap.center, room["blocks"], KNOCKBACK_PIXELS)
+
+                            trap_cooldown = 0.6
                             break
 
-                # fox AI (unchanged + shake added)
+                # fox AI
                 for fox in room["foxes"]:
                     fdx = (FOX_SPEED * dt) if fox.x < player.x else (-FOX_SPEED * dt)
                     fdy = (FOX_SPEED * dt) if fox.y < player.y else (-FOX_SPEED * dt)
                     move_with_collision(fox, room["blocks"], fdx, fdy)
 
-                    if fox.colliderect(player):
+                    # Only take damage if NOT invincible
+                    if invuln_timer <= 0 and fox.colliderect(player):
                         lives -= 1
 
-                        # red flash
+                        # effects
                         hit_flash_timer = HIT_FLASH_DURATION
-
-                        # NEW: shake
                         shake_timer = SHAKE_DURATION_FOX
                         shake_intensity = SHAKE_INTENSITY_FOX
 
-                        # spawn another fox in this room (your logic stays)
+                        # NEW: invincibility window
+                        invuln_timer = INVINCIBILITY_DURATION
+
+                        # NEW: knockback away from fox (no teleport)
+                        _knockback(player, fox.center, room["blocks"], KNOCKBACK_PIXELS)
+
+                        # spawn another fox (your logic stays)
                         room["foxes"].append(
                             pygame.Rect(
                                 random.randint(100, 300),
@@ -152,7 +189,6 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                             )
                         )
 
-                        player.center = (WIDTH // 2, HEIGHT // 2)
                         if lives <= 0:
                             state = "LOST"
                             break
@@ -199,7 +235,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             for ob in room.get("obstacles", []):
                 WIN.blit(ob["img"], ob["draw_rect"].move(cx, cy))
 
-            # traps (red circles) (shaken)
+            # traps (shaken)
             for trap in room.get("traps", []):
                 pygame.draw.circle(WIN, (150, 0, 0), (trap.centerx + cx, trap.centery + cy), 20, 5)
 
@@ -207,8 +243,17 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             for carrot in room["carrots"]:
                 pygame.draw.circle(WIN, (255, 165, 0), (carrot.centerx + cx, carrot.centery + cy), 12)
 
-            # player + foxes (shaken)
-            pygame.draw.rect(WIN, WHITE, player.move(cx, cy))
+            # player blink while invincible (optional but helpful)
+            draw_player = True
+            if invuln_timer > 0:
+                # blink ~10 times/sec
+                if int(invuln_timer * 10) % 2 == 0:
+                    draw_player = False
+
+            if draw_player:
+                pygame.draw.rect(WIN, WHITE, player.move(cx, cy))
+
+            # foxes (shaken)
             for fox in room["foxes"]:
                 pygame.draw.rect(WIN, (255, 50, 50), fox.move(cx, cy))
 
@@ -220,7 +265,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 flash.fill((255, 0, 0, alpha))
                 WIN.blit(flash, (0, 0))
 
-            # UI (NOT shaken, so readable)
+            # UI (NOT shaken)
             ui = f"Lives: {lives} | Score: {score}/{TARGET_SCORE} | Location: {room['name']}"
             draw_text_outline(WIN, ui, FONT, WHITE, BLACK, pos=(30, 30), outline_thickness=2)
 

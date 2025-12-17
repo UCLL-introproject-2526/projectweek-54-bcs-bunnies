@@ -6,7 +6,7 @@ from settings import WIDTH, HEIGHT, FPS, WHITE, BLACK
 from ui import ImageButton, safe_load_bg, safe_load_png, scale_to_width, draw_text_outline
 from game import run_game
 
-# Statessd
+# States
 MENU = "menu"
 HOWTO = "howto"
 
@@ -29,20 +29,16 @@ def main():
 
     # Buttons (safe load + scale)
     TARGET_BTN_WIDTH = 480
-    PLAY_IMG = scale_to_width(safe_load_png(
-        "images/play_button.png"), TARGET_BTN_WIDTH, smooth=False)
-    HOW_IMG = scale_to_width(safe_load_png(
-        "images/howtoplay_button.png"), TARGET_BTN_WIDTH, smooth=False)
-    QUIT_IMG = scale_to_width(safe_load_png(
-        "images/quit_button.png"), TARGET_BTN_WIDTH, smooth=False)
+    PLAY_IMG = scale_to_width(safe_load_png("images/play_button.png"), TARGET_BTN_WIDTH, smooth=False)
+    HOW_IMG  = scale_to_width(safe_load_png("images/howtoplay_button.png"), TARGET_BTN_WIDTH, smooth=False)
+    QUIT_IMG = scale_to_width(safe_load_png("images/quit_button.png"), TARGET_BTN_WIDTH, smooth=False)
 
     BACK_BTN_WIDTH = 320
-    BACK_IMG = scale_to_width(safe_load_png(
-        "images/back_button.png"), BACK_BTN_WIDTH, smooth=False)
+    BACK_IMG = scale_to_width(safe_load_png("images/back_button.png"), BACK_BTN_WIDTH, smooth=False)
 
     # Position buttons
     play_btn = ImageButton(PLAY_IMG, (WIDTH // 2, 470))
-    how_btn = ImageButton(HOW_IMG,  (WIDTH // 2, 565))
+    how_btn  = ImageButton(HOW_IMG,  (WIDTH // 2, 565))
     quit_btn = ImageButton(QUIT_IMG, (WIDTH // 2, 660))
     back_btn = ImageButton(BACK_IMG, (WIDTH // 2, 620))
 
@@ -73,9 +69,12 @@ def main():
                     result = run_game(WIN, FONT, END_FONT)
                     if result == "quit":
                         running = False
-                    state = MENU
+                    else:
+                        state = MENU
+
                 elif how_btn.clicked(event):
                     state = HOWTO
+
                 elif quit_btn.clicked(event):
                     running = False
 

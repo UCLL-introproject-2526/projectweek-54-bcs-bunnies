@@ -35,5 +35,5 @@ SHAKE_DURATION_TRAP = 0.20
 SHAKE_INTENSITY_TRAP = 10
 
 # NEW: Invincibility + knockback
-INVINCIBILITY_DURATION = 3.0   # seconds (you asked for ~3 sec)
+INVINCIBILITY_DURATION = 1.5   # seconds (you asked for ~3 sec)
 KNOCKBACK_PIXELS = 70          # how far you get pushed away

@@ -7,7 +7,8 @@ from settings import (
     WIDTH, HEIGHT, FPS,
     PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_SPEED,
     FOX_SPEED, LIVES_START, TARGET_SCORE,
-    WHITE, BLACK
+    WHITE, BLACK,
+    HIT_FLASH_DURATION, HIT_FLASH_MAX_ALPHA
 )
 from ui import draw_text_outline
 from world import generate_room, move_with_collision, portal_transition, reset_world
@@ -18,6 +19,8 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
     Runs the game.
     ENTER on win/lose -> restart from the real beginning (fresh rooms, full lives, score 0).
     ESC -> menu.
+
+    NEW: Red hit flash when a fox touches you.
     """
     clock = pygame.time.Clock()
 
@@ -31,10 +34,17 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
         state = "PLAYING"
         pulse_timer = 0.0
 
+        # --- NEW: hit flash timer (seconds) ---
+        hit_flash_timer = 0.0
+
         while True:
             dt = clock.tick(FPS) / 1000.0
             pulse_timer += dt * 5.0
             room = generate_room(current_coords)
+
+            # --- NEW: decay hit flash ---
+            if hit_flash_timer > 0:
+                hit_flash_timer = max(0.0, hit_flash_timer - dt)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -59,7 +69,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         room = generate_room(current_coords)
                         break
 
-                # fox AI (UNCHANGED)
+                # fox AI (UNCHANGED logic, only added hit flash)
                 for fox in room["foxes"]:
                     fdx = (FOX_SPEED * dt) if fox.x < player.x else (-FOX_SPEED * dt)
                     fdy = (FOX_SPEED * dt) if fox.y < player.y else (-FOX_SPEED * dt)
@@ -67,6 +77,10 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
 
                     if fox.colliderect(player):
                         lives -= 1
+
+                        # --- NEW: start red flash ---
+                        hit_flash_timer = HIT_FLASH_DURATION
+
                         # spawn another fox in this room (UNCHANGED)
                         room["foxes"].append(
                             pygame.Rect(
@@ -112,7 +126,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 else:
                     pygame.draw.rect(WIN, (139, 69, 19), block)
 
-            # NEW: draw your image obstacles (trees/bushes)
+            # draw image obstacles (trees/bushes)
             for ob in room.get("obstacles", []):
                 WIN.blit(ob["img"], ob["draw_rect"])
 
@@ -124,6 +138,14 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             pygame.draw.rect(WIN, WHITE, player)
             for fox in room["foxes"]:
                 pygame.draw.rect(WIN, (255, 50, 50), fox)
+
+            # --- NEW: red hit flash overlay (fade out) ---
+            if hit_flash_timer > 0:
+                strength = hit_flash_timer / HIT_FLASH_DURATION  # 1 -> 0
+                alpha = int(HIT_FLASH_MAX_ALPHA * strength)
+                flash = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+                flash.fill((255, 0, 0, alpha))
+                WIN.blit(flash, (0, 0))
 
             # UI text with outline
             ui = f"Lives: {lives} | Score: {score}/{TARGET_SCORE} | Location: {room['name']}"

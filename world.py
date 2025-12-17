@@ -90,6 +90,8 @@ def generate_room(coords):
 
         foxes = [pygame.Rect(random.randint(100, 300),
                              random.randint(100, 600), FOX_WIDTH, FOX_HEIGHT)]
+
+
         carrots = [pygame.Rect(random.randint(100, 1100), random.randint(
             100, 600), 25, 25) for _ in range(random.randint(3, 6))]
 
@@ -176,6 +178,8 @@ def generate_room(coords):
             "theme": theme,
             "portals": portals,
             "name": get_funny_name(),
+            "fox_frames": [0] * len(foxes),  # <-- add here
+            "fox_directions": [1] * len(foxes),
         }
     return room_data[coords]
 

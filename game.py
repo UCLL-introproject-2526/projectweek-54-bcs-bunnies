@@ -21,8 +21,8 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
     """
     clock = pygame.time.Clock()
 
-    while True:  # <-- RESTART LOOP
-        reset_world()  # <-- clears cached rooms (fixes "restart with 1 life" / mutated rooms)
+    while True:  # restart loop
+        reset_world()
 
         player = pygame.Rect(WIDTH//2, HEIGHT//2, PLAYER_WIDTH, PLAYER_HEIGHT)
         current_coords = (0, 0)
@@ -40,7 +40,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 if event.type == pygame.QUIT:
                     return "quit"
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                    return "menu"  # back to menu
+                    return "menu"
 
             if state == "PLAYING":
                 keys = pygame.key.get_pressed()
@@ -100,7 +100,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 pygame.draw.ellipse(WIN, WHITE, glow_rect)
                 pygame.draw.ellipse(WIN, glow_color, p_rect)
 
-            # environment blocks
+            # environment blocks (your existing drawing)
             for block in room["blocks"]:
                 if block.width == WIDTH or block.height == HEIGHT:
                     pygame.draw.rect(WIN, (30, 30, 30), block)
@@ -112,9 +112,15 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 else:
                     pygame.draw.rect(WIN, (139, 69, 19), block)
 
+            # NEW: draw your image obstacles (trees/bushes)
+            for ob in room.get("obstacles", []):
+                WIN.blit(ob["img"], ob["draw_rect"])
+
+            # carrots
             for carrot in room["carrots"]:
                 pygame.draw.circle(WIN, (255, 165, 0), carrot.center, 12)
 
+            # player + fox rects
             pygame.draw.rect(WIN, WHITE, player)
             for fox in room["foxes"]:
                 pygame.draw.rect(WIN, (255, 50, 50), fox)
@@ -123,6 +129,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             ui = f"Lives: {lives} | Score: {score}/{TARGET_SCORE} | Location: {room['name']}"
             draw_text_outline(WIN, ui, FONT, WHITE, BLACK, pos=(30, 30), outline_thickness=2)
 
+            # win/lose screen + restart
             if state != "PLAYING":
                 overlay = pygame.Surface((WIDTH, HEIGHT))
                 overlay.set_alpha(200)
@@ -136,14 +143,13 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
 
                 pygame.display.flip()
 
-                # wait for enter or escape
                 while True:
                     for event in pygame.event.get():
                         if event.type == pygame.QUIT:
                             return "quit"
                         if event.type == pygame.KEYDOWN:
                             if event.key == pygame.K_RETURN:
-                                break  # restart
+                                break
                             if event.key == pygame.K_ESCAPE:
                                 return "menu"
                     else:
@@ -151,7 +157,6 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         continue
                     break
 
-                # break inner game loop -> outer restart loop restarts fresh
-                break
+                break  # restart fresh (outer loop)
 
             pygame.display.flip()

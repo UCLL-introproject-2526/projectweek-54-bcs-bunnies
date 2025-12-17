@@ -9,7 +9,7 @@ from settings import (
     FOX_SPEED, LIVES_START, TARGET_SCORE,
     WHITE, BLACK
 )
-from ui import draw_text_outline
+from ui import draw_text_outline,safe_load_shader
 from world import generate_room, move_with_collision, portal_transition, reset_world
 
 
@@ -30,6 +30,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
         lives = LIVES_START
         state = "PLAYING"
         pulse_timer = 0.0
+        LOW_shade = safe_load_shader("images/damage.png",(30, 120, 80))
 
         while True:
             dt = clock.tick(FPS) / 1000.0
@@ -124,6 +125,10 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             pygame.draw.rect(WIN, WHITE, player)
             for fox in room["foxes"]:
                 pygame.draw.rect(WIN, (255, 50, 50), fox)
+
+            
+            if lives == 1:
+                WIN.blit(LOW_shade,(0,0))
 
             # UI text with outline
             ui = f"Lives: {lives} | Score: {score}/{TARGET_SCORE} | Location: {room['name']}"

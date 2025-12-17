@@ -1,5 +1,4 @@
 import random
-import math
 import pygame
 from settings import WIDTH, HEIGHT, BLOCK_SIZE, PORTAL_SIZE, FOX_WIDTH, FOX_HEIGHT
 
@@ -12,8 +11,53 @@ def get_funny_name() -> str:
 room_data = {}
 
 def reset_world():
-    """Clears cached rooms so a new run starts completely fresh."""
     room_data.clear()
+
+def safe_load_png(path: str):
+    try:
+        return pygame.image.load(path).convert_alpha()
+    except:
+        return None
+
+def scale_to_max(img: pygame.Surface, max_w: int, max_h: int) -> pygame.Surface:
+    """Scale while keeping aspect ratio so it fits within max_w x max_h."""
+    w, h = img.get_size()
+    if w == 0 or h == 0:
+        return img
+    scale = min(max_w / w, max_h / h)
+    new_size = (max(1, int(w * scale)), max(1, int(h * scale)))
+    return pygame.transform.smoothscale(img, new_size)
+
+def make_obstacle(img: pygame.Surface, x: int, y: int, kind: str):
+    """
+    Returns dict with:
+      - img (scaled)
+      - draw_rect (where to blit)
+      - coll_rect (smaller rect used for collisions)
+    """
+    draw_rect = img.get_rect(topleft=(x, y))
+
+    # collision rect smaller at the bottom so you see the full leaves but collide near base
+    if kind == "tree":
+        # bottom 35% of the image
+        cw = int(draw_rect.width * 0.55)
+        ch = int(draw_rect.height * 0.35)
+        cx = draw_rect.centerx - cw // 2
+        cy = draw_rect.bottom - ch
+        coll = pygame.Rect(cx, cy, cw, ch)
+    else:
+        # bush: bottom 45% of the image
+        cw = int(draw_rect.width * 0.70)
+        ch = int(draw_rect.height * 0.45)
+        cx = draw_rect.centerx - cw // 2
+        cy = draw_rect.bottom - ch
+        coll = pygame.Rect(cx, cy, cw, ch)
+
+    return {"img": img, "draw_rect": draw_rect, "coll_rect": coll, "kind": kind}
+
+def theme_index(coords):
+    x, y = coords
+    return abs(x * 31 + y * 17) % 3  # 0..2
 
 def generate_room(coords):
     if coords not in room_data:
@@ -21,6 +65,8 @@ def generate_room(coords):
         theme = random.choice(["trees", "rocks", "blocks"])
 
         blocks = []
+        obstacles = []  # NEW: image obstacles (draw + collision)
+
         safe_zone = pygame.Rect(WIDTH//2 - 150, HEIGHT//2 - 150, 300, 300)
 
         # Boundary walls
@@ -32,6 +78,7 @@ def generate_room(coords):
         ]
         blocks.extend(walls)
 
+        # Keep your existing random block obstacles
         for _ in range(random.randint(8, 14)):
             bx = (random.randint(2, (WIDTH // BLOCK_SIZE) - 3)) * BLOCK_SIZE
             by = (random.randint(2, (HEIGHT // BLOCK_SIZE) - 3)) * BLOCK_SIZE
@@ -49,8 +96,56 @@ def generate_room(coords):
             "right": pygame.Rect(WIDTH-30, HEIGHT//2 - PORTAL_SIZE//2, 30, PORTAL_SIZE),
         }
 
+        # ---------------- NEW: YOUR PNGS AS OBSTACLES ----------------
+        idx = theme_index(coords)
+
+        # These are the exact files you showed earlier
+        tree_img = safe_load_png(f"images/tree_sheet_room{idx+1}.png")
+        bush_img = safe_load_png(f"images/bush_sheet_room{idx+1}.png")
+
+        # fallback if missing
+        if tree_img is None:
+            tree_img = pygame.Surface((96, 96), pygame.SRCALPHA); tree_img.fill((40, 140, 40))
+        if bush_img is None:
+            bush_img = pygame.Surface((80, 80), pygame.SRCALPHA); bush_img.fill((20, 110, 20))
+
+        # scale to look good (full image visible)
+        tree_scaled = scale_to_max(tree_img, max_w=110, max_h=110)
+        bush_scaled = scale_to_max(bush_img, max_w=85,  max_h=85)
+
+        def place(kind: str, img_scaled: pygame.Surface, count: int):
+            placed = 0
+            tries = 0
+            while placed < count and tries < 500:
+                tries += 1
+                x = random.randint(60, WIDTH - 60 - img_scaled.get_width())
+                y = random.randint(120, HEIGHT - 80 - img_scaled.get_height())
+
+                ob = make_obstacle(img_scaled, x, y, kind)
+                coll = ob["coll_rect"]
+
+                # don’t block spawn, portals, or overlap with other colliders/blocks
+                if coll.colliderect(safe_zone):
+                    continue
+                if any(coll.colliderect(p) for p in portals.values()):
+                    continue
+                if any(coll.colliderect(b) for b in blocks):
+                    continue
+                if any(coll.colliderect(o["coll_rect"]) for o in obstacles):
+                    continue
+
+                obstacles.append(ob)
+                blocks.append(coll)  # IMPORTANT: collision uses the smaller rect
+                placed += 1
+
+        # exactly what you asked
+        place("tree", tree_scaled, 2)
+        place("bush", bush_scaled, 3)
+        # ----------------------------------------------------------------------
+
         room_data[coords] = {
             "blocks": blocks,
+            "obstacles": obstacles,  # NEW
             "foxes": foxes,
             "carrots": carrots,
             "color": random.choice(bg_colors),

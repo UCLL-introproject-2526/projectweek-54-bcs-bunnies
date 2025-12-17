@@ -2,6 +2,48 @@ import pygame
 import random
 import math
 import os
+from heapq import heappush, heappop
+from settings import WIDTH, HEIGHT, BLOCK_SIZE  
+
+def a_star(start, goal, obstacles, cell_size):
+    def heuristic(a, b):
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+    
+    def get_neighbors(pos):
+        x, y = pos
+        neighbors = [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]
+        return [n for n in neighbors if 0 <= n[0] < (WIDTH // cell_size) and 0 <= n[1] < (HEIGHT // cell_size) and not any(ob.colliderect(pygame.Rect(n[0]*cell_size, n[1]*cell_size, cell_size, cell_size)) for ob in obstacles)]
+    
+    start_cell = (int(start[0] // cell_size), int(start[1] // cell_size))
+    goal_cell = (int(goal[0] // cell_size), int(goal[1] // cell_size))
+    
+    frontier = []
+    heappush(frontier, (0, start_cell))
+    came_from = {start_cell: None}
+    cost_so_far = {start_cell: 0}
+    
+    while frontier:
+        _, current = heappop(frontier)
+        if current == goal_cell:
+            break
+        for neighbor in get_neighbors(current):
+            new_cost = cost_so_far[current] + 1
+            if neighbor not in cost_so_far or new_cost < cost_so_far[neighbor]:
+                cost_so_far[neighbor] = new_cost
+                priority = new_cost + heuristic(goal_cell, neighbor)
+                heappush(frontier, (priority, neighbor))
+                came_from[neighbor] = current
+    
+    if goal_cell not in came_from:
+        return []
+    
+    path = []
+    current = goal_cell
+    while current != start_cell:
+        path.append((current[0] * cell_size + cell_size // 2, current[1] * cell_size + cell_size // 2))
+        current = came_from[current]
+    path.reverse()
+    return path
 
 from settings import (
     WIDTH, HEIGHT, FPS,
@@ -199,17 +241,30 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                                 state = "LOST"
                             break
 
-                # fox AI
+               # fox AI
                 for i, fox in enumerate(room["foxes"]):
-                    fdx = (FOX_SPEED * dt) if fox.x < player.x else (-FOX_SPEED * dt)
-                    fdy = (FOX_SPEED * dt) if fox.y < player.y else (-FOX_SPEED * dt)
-                    move_with_collision(fox, room["blocks"], fdx, fdy)
-                    direction = 1 if fdx > 0 else (-1 if fdx < 0 else room["fox_directions"][i])
-                    room["fox_directions"][i] = direction
+                    # Calculate path every few frames to avoid lag (e.g., every 10 frames)
+                    if len(room["fox_paths"][i]) <= 1 or random.random() < 0.1:  # Recalculate occasionally
+                        room["fox_paths"][i] = a_star(fox.center, player.center, room["blocks"], BLOCK_SIZE)
+                    
+                    if room["fox_paths"][i] and len(room["fox_paths"][i]) > 1:
+                        next_pos = room["fox_paths"][i][1]
+                        dx = (next_pos[0] - fox.centerx) / max(1, abs(next_pos[0] - fox.centerx)) * FOX_SPEED * dt
+                        dy = (next_pos[1] - fox.centery) / max(1, abs(next_pos[1] - fox.centery)) * FOX_SPEED * dt
+                        move_with_collision(fox, room["blocks"], dx, dy)
+                        # Update direction for animation
+                        direction = 1 if dx > 0 else (-1 if dx < 0 else room["fox_directions"][i])
+                        room["fox_directions"][i] = direction
+                    else:
+                        # Fallback to direct movement if no path
+                        fdx = (FOX_SPEED * dt) if fox.x < player.x else (-FOX_SPEED * dt)
+                        fdy = (FOX_SPEED * dt) if fox.y < player.y else (-FOX_SPEED * dt)
+                        move_with_collision(fox, room["blocks"], fdx, fdy)
+                        direction = 1 if fdx > 0 else (-1 if fdx < 0 else room["fox_directions"][i])
+                        room["fox_directions"][i] = direction
+                    
                     room["fox_frames"][i] = (room["fox_frames"][i] + 1) % len(fox_images)
-
-                 
-
+                    
                     if invuln_timer <= 0 and fox.colliderect(player):
                         lives -= 1
 
@@ -218,10 +273,9 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         shake_intensity = SHAKE_INTENSITY_FOX
 
                         invuln_timer = INVINCIBILITY_DURATION
-                        _knockback(player, fox.center,
-                                   room["blocks"], KNOCKBACK_PIXELS)
+                        _knockback(player, fox.center, room["blocks"], KNOCKBACK_PIXELS)
 
-                        # keep your “spawn another fox” logic
+                        # keep your "spawn another fox" logic
                         room["foxes"].append(
                             pygame.Rect(
                                 random.randint(100, 300),
@@ -232,6 +286,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         )
                         room["fox_frames"].append(0)
                         room["fox_directions"].append(1)
+                        room["fox_paths"].append([])
 
                         if lives <= 0:
                             state = "LOST"

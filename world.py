@@ -181,6 +181,8 @@ def generate_room(coords):
             "name": get_funny_name(),
             "fox_frames": [0] * len(foxes),  # <-- add here
             "fox_directions": [1] * len(foxes),
+            "fox_paths": [[] for _ in foxes],
+            
         }
     return room_data[coords]
 

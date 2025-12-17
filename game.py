@@ -45,17 +45,22 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             if state == "PLAYING":
                 keys = pygame.key.get_pressed()
                 dx = dy = 0.0
-                if keys[pygame.K_a] or keys[pygame.K_LEFT]:  dx = -PLAYER_SPEED * dt
-                if keys[pygame.K_d] or keys[pygame.K_RIGHT]: dx =  PLAYER_SPEED * dt
-                if keys[pygame.K_w] or keys[pygame.K_UP]:    dy = -PLAYER_SPEED * dt
-                if keys[pygame.K_s] or keys[pygame.K_DOWN]:  dy =  PLAYER_SPEED * dt
+                if keys[pygame.K_a] or keys[pygame.K_LEFT]:
+                    dx = -PLAYER_SPEED * dt
+                if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
+                    dx = PLAYER_SPEED * dt
+                if keys[pygame.K_w] or keys[pygame.K_UP]:
+                    dy = -PLAYER_SPEED * dt
+                if keys[pygame.K_s] or keys[pygame.K_DOWN]:
+                    dy = PLAYER_SPEED * dt
 
                 move_with_collision(player, room["blocks"], dx, dy)
 
                 # portals
                 for side, p_rect in room["portals"].items():
                     if player.colliderect(p_rect):
-                        current_coords = portal_transition(side, current_coords, player)
+                        current_coords = portal_transition(
+                            side, current_coords, player)
                         room = generate_room(current_coords)
                         break
 
@@ -94,9 +99,11 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
 
             # portal glow
             pulse_val = (math.sin(pulse_timer) + 1) / 2
-            glow_color = (0, 200 + int(55 * pulse_val), 200 + int(55 * pulse_val))
+            glow_color = (0, 200 + int(55 * pulse_val),
+                          200 + int(55 * pulse_val))
             for p_rect in room["portals"].values():
-                glow_rect = p_rect.inflate(int(10 * pulse_val), int(10 * pulse_val))
+                glow_rect = p_rect.inflate(
+                    int(10 * pulse_val), int(10 * pulse_val))
                 pygame.draw.ellipse(WIN, WHITE, glow_rect)
                 pygame.draw.ellipse(WIN, glow_color, p_rect)
 
@@ -105,10 +112,13 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 if block.width == WIDTH or block.height == HEIGHT:
                     pygame.draw.rect(WIN, (30, 30, 30), block)
                 elif room["theme"] == "trees":
-                    pygame.draw.rect(WIN, (80, 50, 20), (block.centerx - 10, block.centery, 20, 40))
-                    pygame.draw.circle(WIN, (20, 100, 20), (block.centerx, block.centery), 40)
+                    pygame.draw.rect(
+                        WIN, (80, 50, 20), (block.centerx - 10, block.centery, 20, 40))
+                    pygame.draw.circle(WIN, (20, 100, 20),
+                                       (block.centerx, block.centery), 40)
                 elif room["theme"] == "rocks":
-                    pygame.draw.rect(WIN, (100, 100, 100), block, border_radius=20)
+                    pygame.draw.rect(WIN, (100, 100, 100),
+                                     block, border_radius=20)
                 else:
                     pygame.draw.rect(WIN, (139, 69, 19), block)
 
@@ -127,7 +137,8 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
 
             # UI text with outline
             ui = f"Lives: {lives} | Score: {score}/{TARGET_SCORE} | Location: {room['name']}"
-            draw_text_outline(WIN, ui, FONT, WHITE, BLACK, pos=(30, 30), outline_thickness=2)
+            draw_text_outline(WIN, ui, FONT, WHITE, BLACK,
+                              pos=(30, 30), outline_thickness=2)
 
             # win/lose screen + restart
             if state != "PLAYING":
@@ -137,7 +148,8 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 WIN.blit(overlay, (0, 0))
 
                 msg = "YOU LOST LIL BRO" if state == "LOST" else "YOU WON CHAMP"
-                draw_text_outline(WIN, msg, END_FONT, WHITE, BLACK, center=(WIDTH//2, HEIGHT//2), outline_thickness=4)
+                draw_text_outline(WIN, msg, END_FONT, WHITE, BLACK, center=(
+                    WIDTH//2, HEIGHT//2), outline_thickness=4)
                 draw_text_outline(WIN, "Press ENTER to restart | ESC for menu", FONT, WHITE, BLACK,
                                   center=(WIDTH//2, HEIGHT//2 + 90), outline_thickness=2)
 

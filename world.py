@@ -89,7 +89,7 @@ def generate_room(coords):
                     
                     if img:
                         if filename.endswith("_bg.png"):
-                            # Background: Scale to full screen
+                            # It's a background
                             bg_image = pygame.transform.scale(img, (WIDTH, HEIGHT))
                         else:
                             # --- SCALING LOGIC START ---

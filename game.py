@@ -86,7 +86,7 @@ def _knockback(player: pygame.Rect, source_center, blocks, pixels: int):
     move_with_collision(player, blocks, nx * pixels, ny * pixels)
 
 
-def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.Font) -> str:
+def run_game( WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.Font) -> str:
     clock = pygame.time.Clock()
 
     # ✅ ONLY animation speed (not fox movement)
@@ -103,7 +103,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
 
     # Carrots
     carrot_img = pygame.image.load("images/carrot.png").convert_alpha()
-    carrot_img = pygame.transform.scale(carrot_img, (CARROT_SIZE, CARROT_SIZE))
+    carrot_img = pygame.transform.scale(carrot_img, (100, 80))
 
     # Traps
     trap_img = pygame.image.load("images/trap.png").convert_alpha()
@@ -328,18 +328,25 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 cy = random.randint(-shake_intensity, shake_intensity)
 
             # ---------------- DRAW ----------------
-            WIN.fill(room["color"])
+            if room.get("bg_image"):
+                # Draw the image if it exists
+                WIN.blit(room["bg_image"], (0, 0))
+            else:
+                # Fallback to color
+                WIN.fill(room["color"])
 
+            # DRAW PORTAL GLOW (Keep this so portals are visible!)
             pulse_val = (math.sin(pulse_timer) + 1) / 2
             glow_color = (0, 200 + int(55 * pulse_val), 200 + int(55 * pulse_val))
+            
             for p_rect in room["portals"].values():
                 glow_rect = p_rect.inflate(int(10 * pulse_val), int(10 * pulse_val)).move(cx, cy)
                 pygame.draw.ellipse(WIN, WHITE, glow_rect)
                 pygame.draw.ellipse(WIN, glow_color, p_rect.move(cx, cy))
 
             for block in room["blocks"]:
-                b = block.move(cx, cy)
                 if block.width == WIDTH or block.height == HEIGHT:
+                    b = block.move(cx, cy)
                     pygame.draw.rect(WIN, (30, 30, 30), b)
                 elif room["theme"] == "trees":
                     pygame.draw.rect(WIN, (80, 50, 20), (b.centerx - 10, b.centery, 20, 40))
@@ -357,7 +364,8 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 WIN.blit(trap_img, rect)
 
             for carrot in room["carrots"]:
-                rect = carrot_img.get_rect(center=(carrot.centerx + cx, carrot.centery + cy))
+                offset = math.sin(pygame.time.get_ticks() * 0.005) * 5
+                rect = carrot_img.get_rect(center=(carrot.centerx + cx, carrot.centery + cy + offset))
                 WIN.blit(carrot_img, rect)
 
             blink_hide = False

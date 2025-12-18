@@ -3,7 +3,6 @@ import random
 import math
 import os
 from heapq import heappush, heappop
-
 from settings import WIDTH, HEIGHT, BLOCK_SIZE
 
 
@@ -148,6 +147,14 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
         # Back-to-menu button
         BACK_IMG = scale_to_width(safe_load_png("images/back_button.png"), 260, smooth=False)
         back_btn = ImageButton(BACK_IMG, (WIDTH // 2, HEIGHT // 2 + 200))
+
+
+        #blood
+        damaged=pygame.image.load("images/damage.png").convert_alpha()
+        #damaged2 = pygame.image.load("images/damage3.png").convert_alpha()
+        
+
+
 
         while True:
             reset_world()
@@ -467,6 +474,15 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                     o.set_alpha(transition_alpha)
                     o.fill((0, 0, 0))
                     WIN.blit(o, (0, 0))
+                
+                if lives == 2:
+                    damaged.set_alpha(85)
+                    WIN.blit(damaged,(0,0))
+                #if lives == 1:
+                 #   damaged2.set_alpha(120)
+                  #  WIN.blit(damaged2,(0,0))
+
+                    
 
                 # UI
                 ui = f"Lives: {lives} | Score: {score}/{TARGET_SCORE} | Location: {room['name']}"

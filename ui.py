@@ -23,17 +23,6 @@ def safe_load_bg(path: str, fallback_color=(40, 80, 40)) -> pygame.Surface:
         return surf
 
 
-def safe_load_shader(path: str, fallback_color=(40, 80, 40)) -> pygame.Surface:
-    try:
-        img = pygame.image.load(path).convert_alpha()
-        img.set_alpha(85)
-        return pygame.transform.scale(img, (WIDTH, HEIGHT))
-    except Exception as e:
-        print(f"[UI] Failed to load damage shader {path}: {e}")
-        surf = pygame.Surface((WIDTH, HEIGHT))
-        surf.fill(fallback_color)
-        return surf
-
 
 def safe_load_png(path: str) -> pygame.Surface:
     try:

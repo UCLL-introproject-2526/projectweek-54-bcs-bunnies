@@ -90,19 +90,20 @@ def generate_room(coords):
                     if img:
                         if filename.endswith("_bg.png"):
                             # It's a background
+                            # It's a background
                             bg_image = pygame.transform.scale(img, (WIDTH, HEIGHT))
                         else:
                             # --- SCALING LOGIC START ---
                             fname_lower = filename.lower()
                             
                             if "tree" in fname_lower:
-                                # MAKE TREES BIGGER
+                                # MAKE TREES BIGGER (e.g., 180x180)
                                 img = scale_to_max(img, max_w=180, max_h=180)
                             elif "rock" in fname_lower or "stone" in fname_lower:
-                                # MAKE ROCKS SMALLER
+                                # MAKE ROCKS SMALLER (e.g., 60x60)
                                 img = scale_to_max(img, max_w=60, max_h=60)
                             else:
-                                # BUSHES AND OTHERS
+                                # BUSHES AND OTHERS (Standard size, e.g., 80x80)
                                 img = scale_to_max(img, max_w=80, max_h=80)
                             # --- SCALING LOGIC END ---
                             

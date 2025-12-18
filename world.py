@@ -79,6 +79,7 @@ def generate_room(coords):
         asset_images = []
 
         # Scan the chosen folder
+        # Scan the chosen folder
         if os.path.exists(theme_path):
             for filename in os.listdir(theme_path):
                 if filename.endswith(".png"):
@@ -87,11 +88,23 @@ def generate_room(coords):
                     
                     if img:
                         if filename.endswith("_bg.png"):
-                            # It's a background
+                            # Background: Scale to full screen
                             bg_image = pygame.transform.scale(img, (WIDTH, HEIGHT))
                         else:
-                            # It's a tree/bush/rock -> Scale it so it fits
-                            img = scale_to_max(img, max_w=100, max_h=100)
+                            # --- SCALING LOGIC START ---
+                            fname_lower = filename.lower()
+                            
+                            if "tree" in fname_lower:
+                                # MAKE TREES BIGGER (e.g., 180x180)
+                                img = scale_to_max(img, max_w=180, max_h=180)
+                            elif "rock" in fname_lower or "stone" in fname_lower:
+                                # MAKE ROCKS SMALLER (e.g., 60x60)
+                                img = scale_to_max(img, max_w=60, max_h=60)
+                            else:
+                                # BUSHES AND OTHERS (Standard size, e.g., 80x80)
+                                img = scale_to_max(img, max_w=80, max_h=80)
+                            # --- SCALING LOGIC END ---
+                            
                             asset_images.append(img)
         if not bg_image:
             bg_image = pygame.Surface((WIDTH, HEIGHT))

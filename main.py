@@ -88,19 +88,23 @@ def main():
             if state == MENU:
                 if play_btn.clicked(event):
                     if menu_music:
-                        menu_music.stop()   # 🔇 stop menu music
+                        menu_music.stop()   # 🔇 stop menu music during game
+
                     result = run_game(WIN, FONT, END_FONT)
+
                     if result == "quit":
                         running = False
                     else:
                         state = MENU
-                        if menu_music:
+                        # ▶️ Restart menu music only if it's not already playing
+                        if menu_music and menu_music.get_num_channels() == 0:
                             menu_music.play(loops=-1)
 
                 elif how_btn.clicked(event):
-                    if menu_music:
-                        menu_music.stop()
                     state = HOWTO
+                    # ▶️ Ensure menu music is playing in HOWTO too
+                    if menu_music and menu_music.get_num_channels() == 0:
+                        menu_music.play(loops=-1)
 
                 elif quit_btn.clicked(event):
                     running = False
@@ -108,12 +112,13 @@ def main():
             elif state == HOWTO:
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                     state = MENU
-                    if menu_music:
+                    # music should keep playing (no need to restart unless stopped)
+                    if menu_music and menu_music.get_num_channels() == 0:
                         menu_music.play(loops=-1)
 
                 if back_btn.clicked(event):
                     state = MENU
-                    if menu_music:
+                    if menu_music and menu_music.get_num_channels() == 0:
                         menu_music.play(loops=-1)
 
         # ----- DRAW -----

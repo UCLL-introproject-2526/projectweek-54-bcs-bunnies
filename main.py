@@ -15,33 +15,45 @@ def main():
     pygame.init()
     pygame.font.init()
 
+    # ---------------- MENU MUSIC ----------------
+    try:
+        if not pygame.mixer.get_init():
+            pygame.mixer.init()
+
+        menu_music = pygame.mixer.Sound("sound/menu.mp3")
+        menu_music.set_volume(0.6)
+    except Exception as e:
+        print("[AUDIO] Menu music failed:", e)
+        menu_music = None
+    # --------------------------------------------
+
     WIN = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Bunnies Beta v1.0")
 
-   # Fonts (load from .ttf file, not SysFont)
+    # Fonts (load from .ttf file)
     def load_font(size):
         try:
-            return pygame.font.Font("font.ttf", size)   # put pixelfont.ttf next to main.py
+            return pygame.font.Font("font.ttf", size)
         except:
-            return pygame.font.SysFont(None, size, bold=True)  # fallback if file not found  
+            return pygame.font.SysFont(None, size, bold=True)
+
     FONT = load_font(30)
     BIG_FONT = load_font(48)
-    END_FONT = load_font(80) 
+    END_FONT = load_font(80)
 
-    # Backgrounds (safe load)
+    # Backgrounds
     MENU_BG = safe_load_bg("images/menu_background.png", (30, 120, 80))
     HOWTO_BG = safe_load_bg("images/howtoplay_background.png", (30, 120, 80))
 
-    # Buttons (safe load + scale)
+    # Buttons
     TARGET_BTN_WIDTH = 480
-    PLAY_IMG = scale_to_width(safe_load_png("images/play_button.png"), TARGET_BTN_WIDTH, smooth=False)
-    HOW_IMG  = scale_to_width(safe_load_png("images/howtoplay_button.png"), TARGET_BTN_WIDTH, smooth=False)
-    QUIT_IMG = scale_to_width(safe_load_png("images/quit_button.png"), TARGET_BTN_WIDTH, smooth=False)
+    PLAY_IMG = scale_to_width(safe_load_png("images/play_button.png"), TARGET_BTN_WIDTH)
+    HOW_IMG  = scale_to_width(safe_load_png("images/howtoplay_button.png"), TARGET_BTN_WIDTH)
+    QUIT_IMG = scale_to_width(safe_load_png("images/quit_button.png"), TARGET_BTN_WIDTH)
 
     BACK_BTN_WIDTH = 320
-    BACK_IMG = scale_to_width(safe_load_png("images/back_button.png"), BACK_BTN_WIDTH, smooth=False)
+    BACK_IMG = scale_to_width(safe_load_png("images/back_button.png"), BACK_BTN_WIDTH)
 
-    # Position buttons
     play_btn = ImageButton(PLAY_IMG, (WIDTH // 2, 470))
     how_btn  = ImageButton(HOW_IMG,  (WIDTH // 2, 565))
     quit_btn = ImageButton(QUIT_IMG, (WIDTH // 2, 660))
@@ -49,6 +61,10 @@ def main():
 
     clock = pygame.time.Clock()
     state = MENU
+
+    # ▶️ START menu music
+    if menu_music:
+        menu_music.play(loops=-1)
 
     howto_lines = [
         "Move: WASD or Arrow Keys",
@@ -71,13 +87,19 @@ def main():
 
             if state == MENU:
                 if play_btn.clicked(event):
+                    if menu_music:
+                        menu_music.stop()   # 🔇 stop menu music
                     result = run_game(WIN, FONT, END_FONT)
                     if result == "quit":
                         running = False
                     else:
                         state = MENU
+                        if menu_music:
+                            menu_music.play(loops=-1)
 
                 elif how_btn.clicked(event):
+                    if menu_music:
+                        menu_music.stop()
                     state = HOWTO
 
                 elif quit_btn.clicked(event):
@@ -86,8 +108,13 @@ def main():
             elif state == HOWTO:
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                     state = MENU
+                    if menu_music:
+                        menu_music.play(loops=-1)
+
                 if back_btn.clicked(event):
                     state = MENU
+                    if menu_music:
+                        menu_music.play(loops=-1)
 
         # ----- DRAW -----
         if state == MENU:

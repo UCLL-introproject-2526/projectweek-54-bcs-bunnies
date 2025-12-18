@@ -61,17 +61,16 @@ def theme_index(coords):
 
 
 # --- ADD THIS AT THE TOP OF world.py ---
-import os
 
 # ... (keep your existing imports and helper functions like safe_load_png, scale_to_max, make_obstacle) ...
 
+
 def generate_room(coords):
     if coords not in room_data:
-     
 
         # 1. SETUP: Default values
         bg_colors = [(34, 139, 34), (101, 67, 33), (20, 80, 80)]
-        
+
         # 2. PICK THEME & LOAD FOLDER IMAGES
         theme_folders = ["grassanddirt", "mudandgloomy", "meadow"]
         selected_theme = random.choice(theme_folders)
@@ -86,19 +85,21 @@ def generate_room(coords):
                 if filename.endswith(".png"):
                     full_path = os.path.join(theme_path, filename)
                     img = safe_load_png(full_path)
-                    
+
                     if img:
                         if filename.endswith("_bg.png"):
                             # It's a background
-                            bg_image = pygame.transform.scale(img, (WIDTH, HEIGHT))
+                            bg_image = pygame.transform.scale(
+                                img, (WIDTH, HEIGHT))
                         else:
                             # It's a tree/bush/rock -> Scale it so it fits
-                            img = scale_to_max(img, max_w=100, max_h=100)
+                            img = scale_to_max(
+                                img, max_w=150 if selected_theme == "meadow" else 100, max_h=150 if selected_theme == "meadow" else 100)
                             asset_images.append(img)
         if not bg_image:
             bg_image = pygame.Surface((WIDTH, HEIGHT))
             bg_image.fill((34, 139, 34))  # fallback
-        
+
         # Fallback if no background found
         bg_color = random.choice(bg_colors)
 
@@ -107,7 +108,6 @@ def generate_room(coords):
         obstacles = []
         traps = []
 
-        
         # Keep safe zone for player spawn
         safe_zone = pygame.Rect(WIDTH//2 - 150, HEIGHT//2 - 150, 300, 300)
 
@@ -120,8 +120,6 @@ def generate_room(coords):
         ]
         blocks.extend(walls)
 
-    
-
         # -- KEEPING PORTALS EXACTLY AS THEY WERE --
         portals = {
             "top": pygame.Rect(WIDTH//2 - PORTAL_SIZE//2, 0, PORTAL_SIZE, 30),
@@ -130,7 +128,6 @@ def generate_room(coords):
             "right": pygame.Rect(WIDTH-30, HEIGHT//2 - PORTAL_SIZE//2, 30, PORTAL_SIZE),
         }
 
-      
         # 4. GENERATE OBSTACLES (Using the assets from the folder)
         # Random generic blocks (optional, you can remove this loop if you only want pictures)
         for _ in range(random.randint(4, 8)):
@@ -147,30 +144,35 @@ def generate_room(coords):
             # Try to place 5 to 10 items
             for _ in range(random.randint(5, 10)):
                 img = random.choice(asset_images)
-                
+
                 # Try 100 times to find a valid spot for this item
                 for attempt in range(100):
                     x = random.randint(60, WIDTH - 60 - img.get_width())
                     y = random.randint(120, HEIGHT - 80 - img.get_height())
-                    
+
                     # We use "tree" as a generic type for hitboxes
                     ob = make_obstacle(img, x, y, "tree")
                     coll = ob["coll_rect"]
 
                     # Check collisions
-                    if coll.colliderect(safe_zone): continue
-                    if any(coll.colliderect(p) for p in portals.values()): continue
-                    if any(coll.colliderect(b) for b in blocks): continue
-                    if any(coll.colliderect(o["coll_rect"]) for o in obstacles): continue
-                    
+                    if coll.colliderect(safe_zone):
+                        continue
+                    if any(coll.colliderect(p) for p in portals.values()):
+                        continue
+                    if any(coll.colliderect(b) for b in blocks):
+                        continue
+                    if any(coll.colliderect(o["coll_rect"]) for o in obstacles):
+                        continue
+
                     # If safe, add it
                     obstacles.append(ob)
                     blocks.append(coll)
-                    break 
+                    break
 
         # 5. ENTITIES (Foxes, Carrots, Traps)
-        foxes = [pygame.Rect(random.randint(100, 300), random.randint(100, 600), FOX_WIDTH, FOX_HEIGHT)]
-        
+        foxes = [pygame.Rect(random.randint(100, 300),
+                             random.randint(100, 600), FOX_WIDTH, FOX_HEIGHT)]
+
         # Carrots
         carrots = []
         tries = 0
@@ -180,13 +182,18 @@ def generate_room(coords):
             cy = random.randint(120, HEIGHT - 80)
             carrot = pygame.Rect(cx, cy, 16, 16)
 
-       
-            if carrot.colliderect(safe_zone): continue
-            if any(carrot.colliderect(p) for p in portals.values()): continue
-            if any(carrot.colliderect(b) for b in blocks): continue
-            if any(carrot.colliderect(o["coll_rect"]) for o in obstacles): continue
-            if any(carrot.colliderect(f) for f in foxes): continue
-            if any(carrot.colliderect(c) for c in carrots): continue
+            if carrot.colliderect(safe_zone):
+                continue
+            if any(carrot.colliderect(p) for p in portals.values()):
+                continue
+            if any(carrot.colliderect(b) for b in blocks):
+                continue
+            if any(carrot.colliderect(o["coll_rect"]) for o in obstacles):
+                continue
+            if any(carrot.colliderect(f) for f in foxes):
+                continue
+            if any(carrot.colliderect(c) for c in carrots):
+                continue
 
             carrots.append(carrot)
         # ----------------------------------------------------------------------------------------
@@ -202,12 +209,16 @@ def generate_room(coords):
                 ty = random.randint(120, HEIGHT - 80)
                 tr = pygame.Rect(tx - 20, ty - 20, 40, 40)
 
-             
-                if tr.colliderect(safe_zone): continue
-                if any(tr.colliderect(p) for p in portals.values()): continue
-                if any(tr.colliderect(b) for b in blocks): continue
-                if any(tr.colliderect(c) for c in carrots): continue
-                if any(tr.colliderect(f) for f in foxes): continue
+                if tr.colliderect(safe_zone):
+                    continue
+                if any(tr.colliderect(p) for p in portals.values()):
+                    continue
+                if any(tr.colliderect(b) for b in blocks):
+                    continue
+                if any(tr.colliderect(c) for c in carrots):
+                    continue
+                if any(tr.colliderect(f) for f in foxes):
+                    continue
 
                 traps.append(tr)
                 break

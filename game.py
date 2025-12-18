@@ -1,9 +1,25 @@
+from bunny import Bunny
+from world import generate_room, move_with_collision, portal_transition, reset_world
+from ui import draw_text_outline, ImageButton, safe_load_png, scale_to_width
+from settings import (
+    WIDTH, HEIGHT, FPS,
+    PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_SPEED,
+    FOX_SPEED, LIVES_START, TARGET_SCORE,
+    WHITE, BLACK,
+    HIT_FLASH_DURATION, HIT_FLASH_MAX_ALPHA,
+    SHAKE_DURATION_FOX, SHAKE_INTENSITY_FOX,
+    SHAKE_DURATION_TRAP, SHAKE_INTENSITY_TRAP,
+    INVINCIBILITY_DURATION, KNOCKBACK_PIXELS,
+    DASH_SPEED, DASH_DURATION, DASH_COOLDOWN,
+    SPEED_BOOST_SCORE_1, SPEED_BOOST_MULT_1, CARROT_SIZE
+)
 import pygame
 import random
 import math
 import os
 from heapq import heappush, heappop
 from settings import WIDTH, HEIGHT, BLOCK_SIZE
+
 
 def a_star(start, goal, obstacles, cell_size):
     def heuristic(a, b):
@@ -17,7 +33,8 @@ def a_star(start, goal, obstacles, cell_size):
             if 0 <= n[0] < (WIDTH // cell_size)
             and 0 <= n[1] < (HEIGHT // cell_size)
             and not any(ob.colliderect(
-                pygame.Rect(n[0]*cell_size, n[1]*cell_size, cell_size, cell_size)
+                pygame.Rect(n[0]*cell_size, n[1] *
+                            cell_size, cell_size, cell_size)
             ) for ob in obstacles)
         ]
 
@@ -54,24 +71,6 @@ def a_star(start, goal, obstacles, cell_size):
     return path
 
 
-from settings import (
-    WIDTH, HEIGHT, FPS,
-    PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_SPEED,
-    FOX_SPEED, LIVES_START, TARGET_SCORE,
-    WHITE, BLACK,
-    HIT_FLASH_DURATION, HIT_FLASH_MAX_ALPHA,
-    SHAKE_DURATION_FOX, SHAKE_INTENSITY_FOX,
-    SHAKE_DURATION_TRAP, SHAKE_INTENSITY_TRAP,
-    INVINCIBILITY_DURATION, KNOCKBACK_PIXELS,
-    DASH_SPEED, DASH_DURATION, DASH_COOLDOWN,
-    SPEED_BOOST_SCORE_1, SPEED_BOOST_MULT_1, CARROT_SIZE
-)
-
-from ui import draw_text_outline, ImageButton, safe_load_png, scale_to_width
-from world import generate_room, move_with_collision, portal_transition, reset_world
-from bunny import Bunny
-
-
 def _knockback(player: pygame.Rect, source_center, blocks, pixels: int):
     sx, sy = source_center
     px, py = player.centerx, player.centery
@@ -86,38 +85,82 @@ def _knockback(player: pygame.Rect, source_center, blocks, pixels: int):
     move_with_collision(player, blocks, nx * pixels, ny * pixels)
 
 
-def run_game( WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.Font) -> str:
+def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.Font) -> str:
     clock = pygame.time.Clock()
+
+    suspense_music = "sound/suspense.mp3"
+
+    # ---------------- GAME MUSIC ----------------
+    try:
+        if not pygame.mixer.get_init():
+            pygame.mixer.init()
+
+        pygame.mixer.music.load("sound/jazz.mp3")
+        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.play(-1)  # loop forever
+    except Exception as e:
+        print("[AUDIO] Game music failed:", e)
+    # --------------------------------------------
 
     # ✅ ONLY animation speed (not fox movement)
     FOX_ANIM_DELAY = 0.12  # seconds per frame (bigger = slower)
 
     # Foxes
     fox_files = sorted(os.listdir("images/fox"))
-    fox_images = [pygame.image.load(os.path.join("images/fox", f)).convert_alpha() for f in fox_files]
+    fox_images = [pygame.image.load(os.path.join(
+        "images/fox", f)).convert_alpha() for f in fox_files]
     scale_factor = 2
     fox_images = [
-        pygame.transform.scale(img, (int(img.get_width() * scale_factor), int(img.get_height() * scale_factor)))
+        pygame.transform.scale(
+            img, (int(img.get_width() * scale_factor), int(img.get_height() * scale_factor)))
         for img in fox_images
     ]
 
     # Carrots
     carrot_img = pygame.image.load("images/carrot.png").convert_alpha()
-    carrot_img = pygame.transform.scale(carrot_img, (100, 80))
+    carrot_img = pygame.transform.scale(carrot_img, (120, 100))
 
     # Traps
     trap_img = pygame.image.load("images/trap.png").convert_alpha()
     trap_img = pygame.transform.scale(trap_img, (35, 35))
 
+    # ---------------- SOUND EFFECTS ----------------
+    try:
+        if not pygame.mixer.get_init():
+            pygame.mixer.init()
+
+        carrot_sound = pygame.mixer.Sound("sound/chew.mp3")
+        carrot_sound.set_volume(0.7)
+
+        beartrap_sound = pygame.mixer.Sound("sound/beartrap.mp3")
+        beartrap_sound.set_volume(0.8)
+
+        foxkill_sound = pygame.mixer.Sound("sound/foxkill.mp3")
+        foxkill_sound.set_volume(0.8)
+
+        portal_sound = pygame.mixer.Sound("sound/portal.mp3")
+        portal_sound.set_volume(0.9)
+
+    except Exception as e:
+        print("[AUDIO] Carrot sound failed:", e)
+        carrot_sound = None
+        beartrap_sound = None
+        foxkill_sound = None
+        portal_sound = None
+    # ---------------------------------------------
+
     # Back-to-menu button
-    BACK_IMG = scale_to_width(safe_load_png("images/back_button.png"), 260, smooth=False)
+    BACK_IMG = scale_to_width(safe_load_png(
+        "images/back_button.png"), 260, smooth=False)
     back_btn = ImageButton(BACK_IMG, (WIDTH // 2, HEIGHT // 2 + 200))
 
     while True:
         reset_world()
 
-        player = pygame.Rect(WIDTH // 2, HEIGHT // 2, PLAYER_WIDTH, PLAYER_HEIGHT)
-        bunny = Bunny(player.center, white_square_size=(int(PLAYER_WIDTH * 1.5 * 1.0), int(PLAYER_HEIGHT * 1.0)))
+        player = pygame.Rect(WIDTH // 2, HEIGHT // 2,
+                             PLAYER_WIDTH, PLAYER_HEIGHT)
+        bunny = Bunny(player.center, white_square_size=(
+            int(PLAYER_WIDTH * 1.5 * 1.0), int(PLAYER_HEIGHT * 1.0)))
 
         current_coords = (0, 0)
         score = 0
@@ -171,20 +214,24 @@ def run_game( WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font
             # ---------------- EVENTS ----------------
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    pygame.mixer.music.stop()
                     return "quit"
 
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                     if not is_transitioning:
                         if state == "PLAYING":
                             state = "PAUSED"
+                            pygame.mixer.music.pause()
                         elif state == "PAUSED":
                             state = "PLAYING"
+                            pygame.mixer.music.unpause()
 
                 if state == "PAUSED" and event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                     state = "RESTART"
                     break
 
                 if state == "PAUSED" and back_btn.clicked(event):
+                    pygame.mixer.music.stop()
                     return "menu"
 
             if state == "RESTART":
@@ -211,11 +258,15 @@ def run_game( WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font
 
                 speed_boost = SPEED_BOOST_MULT_1 if score >= SPEED_BOOST_SCORE_1 else 1.0
 
-                final_speed = (DASH_SPEED if dash_timer > 0 else PLAYER_SPEED) * speed_boost
-                move_with_collision(player, room["blocks"], ix * final_speed * dt, iy * final_speed * dt)
+                final_speed = (DASH_SPEED if dash_timer >
+                               0 else PLAYER_SPEED) * speed_boost
+                move_with_collision(
+                    player, room["blocks"], ix * final_speed * dt, iy * final_speed * dt)
 
                 for side, p_rect in room["portals"].items():
                     if player.colliderect(p_rect):
+                        if portal_sound:
+                            portal_sound.play()   # 🔊 PORTAL SOUND
                         is_transitioning = True
                         transition_phase = "out"
                         transition_alpha = 0
@@ -226,47 +277,72 @@ def run_game( WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font
                 if invuln_timer <= 0 and trap_cooldown <= 0:
                     for trap in room.get("traps", []):
                         if player.colliderect(trap):
+
+                            if beartrap_sound:
+                                beartrap_sound.play()   # 🔊 BEAR TRAP SOUND
+
                             lives -= 1
 
-                            hit_flash_timer = max(hit_flash_timer, HIT_FLASH_DURATION)
+                            hit_flash_timer = max(
+                                hit_flash_timer, HIT_FLASH_DURATION)
                             shake_timer = max(shake_timer, SHAKE_DURATION_TRAP)
-                            shake_intensity = max(shake_intensity, SHAKE_INTENSITY_TRAP)
+                            shake_intensity = max(
+                                shake_intensity, SHAKE_INTENSITY_TRAP)
 
                             invuln_timer = INVINCIBILITY_DURATION
-                            _knockback(player, trap.center, room["blocks"], KNOCKBACK_PIXELS)
+                            _knockback(player, trap.center,
+                                       room["blocks"], KNOCKBACK_PIXELS)
 
                             trap_cooldown = 0.6
 
                             if lives <= 0:
                                 state = "LOST"
+                                pygame.mixer.music.stop()
+                                try:
+                                    pygame.mixer.music.load(suspense_music)
+                                    pygame.mixer.music.play(-1)
+                                except Exception as e:
+                                    print("[AUDIO] Suspense music failed:", e)
                             break
 
                 # fox AI
                 for i, fox in enumerate(room["foxes"]):
                     if len(room["fox_paths"][i]) <= 1 or random.random() < 0.1:
-                        room["fox_paths"][i] = a_star(fox.center, player.center, room["blocks"], BLOCK_SIZE)
+                        room["fox_paths"][i] = a_star(
+                            fox.center, player.center, room["blocks"], BLOCK_SIZE)
 
                     if room["fox_paths"][i] and len(room["fox_paths"][i]) > 1:
                         next_pos = room["fox_paths"][i][1]
-                        dx = (next_pos[0] - fox.centerx) / max(1, abs(next_pos[0] - fox.centerx)) * FOX_SPEED * dt
-                        dy = (next_pos[1] - fox.centery) / max(1, abs(next_pos[1] - fox.centery)) * FOX_SPEED * dt
+                        dx = (next_pos[0] - fox.centerx) / max(1,
+                                                               abs(next_pos[0] - fox.centerx)) * FOX_SPEED * dt
+                        dy = (next_pos[1] - fox.centery) / max(1,
+                                                               abs(next_pos[1] - fox.centery)) * FOX_SPEED * dt
                         move_with_collision(fox, room["blocks"], dx, dy)
-                        direction = 1 if dx > 0 else (-1 if dx < 0 else room["fox_directions"][i])
+                        direction = 1 if dx > 0 else (-1 if dx <
+                                                      0 else room["fox_directions"][i])
                         room["fox_directions"][i] = direction
                     else:
-                        fdx = (FOX_SPEED * dt) if fox.x < player.x else (-FOX_SPEED * dt)
-                        fdy = (FOX_SPEED * dt) if fox.y < player.y else (-FOX_SPEED * dt)
+                        fdx = (FOX_SPEED *
+                               dt) if fox.x < player.x else (-FOX_SPEED * dt)
+                        fdy = (FOX_SPEED *
+                               dt) if fox.y < player.y else (-FOX_SPEED * dt)
                         move_with_collision(fox, room["blocks"], fdx, fdy)
-                        direction = 1 if fdx > 0 else (-1 if fdx < 0 else room["fox_directions"][i])
+                        direction = 1 if fdx > 0 else (-1 if fdx <
+                                                       0 else room["fox_directions"][i])
                         room["fox_directions"][i] = direction
 
                     # ✅ SLOW FOX IMAGE SWITCHING (NOT SPEED)
                     room["fox_anim_timer"][i] += dt
                     if room["fox_anim_timer"][i] >= FOX_ANIM_DELAY:
                         room["fox_anim_timer"][i] = 0.0
-                        room["fox_frames"][i] = (room["fox_frames"][i] + 1) % len(fox_images)
+                        room["fox_frames"][i] = (
+                            room["fox_frames"][i] + 1) % len(fox_images)
 
                     if invuln_timer <= 0 and fox.colliderect(player):
+
+                        if foxkill_sound:
+                            foxkill_sound.play()   # 🔊 FOX HIT SOUND
+
                         lives -= 1
 
                         hit_flash_timer = HIT_FLASH_DURATION
@@ -274,7 +350,8 @@ def run_game( WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font
                         shake_intensity = SHAKE_INTENSITY_FOX
 
                         invuln_timer = INVINCIBILITY_DURATION
-                        _knockback(player, fox.center, room["blocks"], KNOCKBACK_PIXELS)
+                        _knockback(player, fox.center,
+                                   room["blocks"], KNOCKBACK_PIXELS)
 
                         room["foxes"].append(
                             pygame.Rect(
@@ -291,15 +368,26 @@ def run_game( WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font
 
                         if lives <= 0:
                             state = "LOST"
+                            pygame.mixer.music.stop()
+                            try:
+                                pygame.mixer.music.load(suspense_music)
+                                pygame.mixer.music.play(-1)
+                            except Exception as e:
+                                print("[AUDIO] Suspense music failed:", e)
                         break
 
                 # carrots
                 for carrot in room["carrots"][:]:
                     if player.colliderect(carrot):
                         room["carrots"].remove(carrot)
+
+                        if carrot_sound:
+                            carrot_sound.play()   # 🔊 PLAY SOUND HERE
+
                         score += 1
                         if score >= TARGET_SCORE:
                             state = "WON"
+                            pygame.mixer.music.stop()
 
             bunny.set_velocity((ix * PLAYER_SPEED, iy * PLAYER_SPEED))
             bunny.update(dt_ms)
@@ -312,7 +400,8 @@ def run_game( WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font
                     if transition_alpha >= 255:
                         transition_alpha = 255
                         if pending_portal_side is not None:
-                            current_coords = portal_transition(pending_portal_side, current_coords, player)
+                            current_coords = portal_transition(
+                                pending_portal_side, current_coords, player)
                         pending_portal_side = None
                         transition_phase = "in"
                 else:
@@ -329,18 +418,18 @@ def run_game( WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font
 
             # ---------------- DRAW ----------------
             if room.get("bg_image"):
-                # Draw the image if it exists
                 WIN.blit(room["bg_image"], (0, 0))
             else:
-                # Fallback to color
                 WIN.fill(room["color"])
 
             # DRAW PORTAL GLOW (Keep this so portals are visible!)
             pulse_val = (math.sin(pulse_timer) + 1) / 2
-            glow_color = (0, 200 + int(55 * pulse_val), 200 + int(55 * pulse_val))
-            
+            glow_color = (0, 200 + int(55 * pulse_val),
+                          200 + int(55 * pulse_val))
+
             for p_rect in room["portals"].values():
-                glow_rect = p_rect.inflate(int(10 * pulse_val), int(10 * pulse_val)).move(cx, cy)
+                glow_rect = p_rect.inflate(
+                    int(10 * pulse_val), int(10 * pulse_val)).move(cx, cy)
                 pygame.draw.ellipse(WIN, WHITE, glow_rect)
                 pygame.draw.ellipse(WIN, glow_color, p_rect.move(cx, cy))
 
@@ -349,8 +438,10 @@ def run_game( WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font
                     b = block.move(cx, cy)
                     pygame.draw.rect(WIN, (30, 30, 30), b)
                 elif room["theme"] == "trees":
-                    pygame.draw.rect(WIN, (80, 50, 20), (b.centerx - 10, b.centery, 20, 40))
-                    pygame.draw.circle(WIN, (20, 100, 20), (b.centerx, b.centery), 40)
+                    pygame.draw.rect(WIN, (80, 50, 20),
+                                     (b.centerx - 10, b.centery, 20, 40))
+                    pygame.draw.circle(WIN, (20, 100, 20),
+                                       (b.centerx, b.centery), 40)
                 elif room["theme"] == "rocks":
                     pygame.draw.rect(WIN, (100, 100, 100), b, border_radius=20)
                 else:
@@ -360,12 +451,14 @@ def run_game( WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font
                 WIN.blit(ob["img"], ob["draw_rect"].move(cx, cy))
 
             for trap in room.get("traps", []):
-                rect = trap_img.get_rect(center=(trap.centerx + cx, trap.centery + cy))
+                rect = trap_img.get_rect(
+                    center=(trap.centerx + cx, trap.centery + cy))
                 WIN.blit(trap_img, rect)
 
             for carrot in room["carrots"]:
                 offset = math.sin(pygame.time.get_ticks() * 0.005) * 5
-                rect = carrot_img.get_rect(center=(carrot.centerx + cx, carrot.centery + cy + offset))
+                rect = carrot_img.get_rect(
+                    center=(carrot.centerx + cx, carrot.centery + cy + offset))
                 WIN.blit(carrot_img, rect)
 
             blink_hide = False
@@ -382,7 +475,8 @@ def run_game( WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font
                 img = fox_images[room["fox_frames"][i]]
                 if room["fox_directions"][i] == -1:
                     img = pygame.transform.flip(img, True, False)
-                rect = img.get_rect(center=(fox.centerx + cx, fox.centery + cy))
+                rect = img.get_rect(
+                    center=(fox.centerx + cx, fox.centery + cy))
                 WIN.blit(img, rect)
 
             if hit_flash_timer > 0:
@@ -399,15 +493,19 @@ def run_game( WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font
                 WIN.blit(o, (0, 0))
 
             ui = f"Lives: {lives} | Score: {score}/{TARGET_SCORE} | Location: {room['name']}"
-            draw_text_outline(WIN, ui, FONT, WHITE, BLACK, pos=(30, 30), outline_thickness=2)
+            draw_text_outline(WIN, ui, FONT, WHITE, BLACK,
+                              pos=(30, 30), outline_thickness=2)
 
             if speed_boost > 1.0:
-                draw_text_outline(WIN, "SNEAKERS ACTIVE", FONT, (0, 255, 0), BLACK, pos=(30, 60), outline_thickness=2)
+                draw_text_outline(WIN, "SNEAKERS ACTIVE", FONT, (0, 255, 0), BLACK, pos=(
+                    30, 60), outline_thickness=2)
 
             if dash_cooldown <= 0:
-                draw_text_outline(WIN, "DASH READY (SPACE)", FONT, (255, 255, 255), BLACK, pos=(30, 90), outline_thickness=2)
+                draw_text_outline(WIN, "DASH READY (SPACE)", FONT, (255, 255, 255), BLACK, pos=(
+                    30, 90), outline_thickness=2)
             else:
-                draw_text_outline(WIN, f"DASH COOLDOWN: {dash_cooldown:.1f}s", FONT, (200, 200, 200), BLACK, pos=(30, 90), outline_thickness=2)
+                draw_text_outline(WIN, f"DASH COOLDOWN: {dash_cooldown:.1f}s", FONT, (
+                    200, 200, 200), BLACK, pos=(30, 90), outline_thickness=2)
 
             if state == "PAUSED":
                 overlay = pygame.Surface((WIDTH, HEIGHT))
@@ -444,8 +542,10 @@ def run_game( WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font
                 while True:
                     for event in pygame.event.get():
                         if event.type == pygame.QUIT:
+                            pygame.mixer.music.stop()
                             return "quit"
                         if back_btn.clicked(event):
+                            pygame.mixer.music.stop()
                             return "menu"
                         if event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                             break

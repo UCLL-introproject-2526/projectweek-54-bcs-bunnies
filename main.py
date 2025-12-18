@@ -47,15 +47,19 @@ def main():
 
     # Buttons
     TARGET_BTN_WIDTH = 480
-    PLAY_IMG = scale_to_width(safe_load_png("images/play_button.png"), TARGET_BTN_WIDTH)
-    HOW_IMG  = scale_to_width(safe_load_png("images/howtoplay_button.png"), TARGET_BTN_WIDTH)
-    QUIT_IMG = scale_to_width(safe_load_png("images/quit_button.png"), TARGET_BTN_WIDTH)
+    PLAY_IMG = scale_to_width(safe_load_png(
+        "images/play_button.png"), TARGET_BTN_WIDTH)
+    HOW_IMG = scale_to_width(safe_load_png(
+        "images/howtoplay_button.png"), TARGET_BTN_WIDTH)
+    QUIT_IMG = scale_to_width(safe_load_png(
+        "images/quit_button.png"), TARGET_BTN_WIDTH)
 
     BACK_BTN_WIDTH = 320
-    BACK_IMG = scale_to_width(safe_load_png("images/back_button.png"), BACK_BTN_WIDTH)
+    BACK_IMG = scale_to_width(safe_load_png(
+        "images/back_button.png"), BACK_BTN_WIDTH)
 
     play_btn = ImageButton(PLAY_IMG, (WIDTH // 2, 470))
-    how_btn  = ImageButton(HOW_IMG,  (WIDTH // 2, 565))
+    how_btn = ImageButton(HOW_IMG,  (WIDTH // 2, 565))
     quit_btn = ImageButton(QUIT_IMG, (WIDTH // 2, 660))
     back_btn = ImageButton(BACK_IMG, (WIDTH // 2, 620))
 

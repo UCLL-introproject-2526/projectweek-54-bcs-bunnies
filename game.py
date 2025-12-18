@@ -3,6 +3,7 @@ import random
 import math
 import os
 from heapq import heappush, heappop
+
 from settings import WIDTH, HEIGHT, BLOCK_SIZE
 
 
@@ -12,14 +13,17 @@ def a_star(start, goal, obstacles, cell_size):
 
     def get_neighbors(pos):
         x, y = pos
-        neighbors = [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]
+        neighbors = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
         return [
             n for n in neighbors
             if 0 <= n[0] < (WIDTH // cell_size)
             and 0 <= n[1] < (HEIGHT // cell_size)
-            and not any(ob.colliderect(
-                pygame.Rect(n[0]*cell_size, n[1]*cell_size, cell_size, cell_size)
-            ) for ob in obstacles)
+            and not any(
+                ob.colliderect(
+                    pygame.Rect(n[0] * cell_size, n[1] * cell_size, cell_size, cell_size)
+                )
+                for ob in obstacles
+            )
         ]
 
     start_cell = (int(start[0] // cell_size), int(start[1] // cell_size))
@@ -48,8 +52,9 @@ def a_star(start, goal, obstacles, cell_size):
     path = []
     current = goal_cell
     while current != start_cell:
-        path.append((current[0] * cell_size + cell_size // 2,
-                     current[1] * cell_size + cell_size // 2))
+        path.append(
+            (current[0] * cell_size + cell_size // 2, current[1] * cell_size + cell_size // 2)
+        )
         current = came_from[current]
     path.reverse()
     return path
@@ -98,7 +103,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 pygame.mixer.init()
 
             game_music = pygame.mixer.Sound("sound/jazz.mp3")
-            game_music.set_volume(0.25)   # low volume so SFX are clear
+            game_music.set_volume(0.25)  # LOW volume so SFX are clear
             game_music.play(loops=-1)
         except Exception as e:
             print("[AUDIO] Game music failed:", e)
@@ -110,21 +115,20 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             try:
                 s = pygame.mixer.Sound(path)
                 s.set_volume(vol)
-                print("[AUDIO] loaded:", path)
                 return s
             except Exception as e:
                 print("[AUDIO] failed to load", path, "->", e)
                 return None
 
-        carrot_sfx   = load_sfx("sound/chew.mp3", 0.7)
-        foxkill_sfx  = load_sfx("sound/foxkill.mp3", 0.8)
+        carrot_sfx = load_sfx("sound/chew.mp3", 0.7)
+        foxkill_sfx = load_sfx("sound/foxkill.mp3", 0.8)
         beartrap_sfx = load_sfx("sound/beartrap.mp3", 0.8)
-        portal_sfx   = load_sfx("sound/portal.mp3", 0.8)
+        portal_sfx = load_sfx("sound/portal.mp3", 0.8)
 
         # ✅ ONLY animation speed (not fox movement)
         FOX_ANIM_DELAY = 0.12
 
-        # Foxes
+        # Fox images
         fox_files = sorted(os.listdir("images/fox"))
         fox_images = [pygame.image.load(os.path.join("images/fox", f)).convert_alpha() for f in fox_files]
         scale_factor = 2
@@ -133,11 +137,11 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             for img in fox_images
         ]
 
-        # Carrots
+        # Carrot image
         carrot_img = pygame.image.load("images/carrot.png").convert_alpha()
         carrot_img = pygame.transform.scale(carrot_img, (CARROT_SIZE, CARROT_SIZE))
 
-        # Traps
+        # Trap image
         trap_img = pygame.image.load("images/trap.png").convert_alpha()
         trap_img = pygame.transform.scale(trap_img, (35, 35))
 
@@ -149,7 +153,10 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             reset_world()
 
             player = pygame.Rect(WIDTH // 2, HEIGHT // 2, PLAYER_WIDTH, PLAYER_HEIGHT)
-            bunny = Bunny(player.center, white_square_size=(int(PLAYER_WIDTH * 1.5 * 1.0), int(PLAYER_HEIGHT * 1.0)))
+            bunny = Bunny(
+                player.center,
+                white_square_size=(int(PLAYER_WIDTH * 1.5), int(PLAYER_HEIGHT * 1.0))
+            )
 
             current_coords = (0, 0)
             score = 0
@@ -207,12 +214,9 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
 
                     if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                         if not is_transitioning:
-                            if state == "PLAYING":
-                                state = "PAUSED"
-                            elif state == "PAUSED":
-                                state = "PLAYING"
+                            state = "PAUSED" if state == "PLAYING" else "PLAYING"
 
-                    if state == "PAUSED" and event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    if state == "PAUSED" and event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.KP_ENTER):
                         state = "RESTART"
                         break
 
@@ -279,7 +283,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                                     state = "LOST"
                                 break
 
-                    # fox AI
+                    # fox AI + collision
                     for i, fox in enumerate(room["foxes"]):
                         if len(room["fox_paths"][i]) <= 1 or random.random() < 0.1:
                             room["fox_paths"][i] = a_star(fox.center, player.center, room["blocks"], BLOCK_SIZE)
@@ -298,7 +302,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                             direction = 1 if fdx > 0 else (-1 if fdx < 0 else room["fox_directions"][i])
                             room["fox_directions"][i] = direction
 
-                        # slow fox image switching
+                        # slow fox animation
                         room["fox_anim_timer"][i] += dt
                         if room["fox_anim_timer"][i] >= FOX_ANIM_DELAY:
                             room["fox_anim_timer"][i] = 0.0
@@ -318,6 +322,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                             invuln_timer = INVINCIBILITY_DURATION
                             _knockback(player, fox.center, room["blocks"], KNOCKBACK_PIXELS)
 
+                            # spawn new fox
                             room["foxes"].append(
                                 pygame.Rect(
                                     random.randint(100, 300),
@@ -415,7 +420,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 if invuln_timer > 0:
                     blink_hide = (pygame.time.get_ticks() // 100) % 2 == 0
 
-                # draw bunny
+                # bunny
                 if not blink_hide:
                     base_center = player.center
                     bunny.set_pos((base_center[0] + cx, base_center[1] + cy))
@@ -453,11 +458,11 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                     draw_text_outline(WIN, "SNEAKERS ACTIVE", FONT, (0, 255, 0), BLACK, pos=(30, 60), outline_thickness=2)
 
                 if dash_cooldown <= 0:
-                    draw_text_outline(WIN, "DASH READY (SPACE)", FONT, (255, 255, 255), BLACK, pos=(30, 90), outline_thickness=2)
+                    draw_text_outline(WIN, "DASH READY (SPACE)", FONT, WHITE, BLACK, pos=(30, 90), outline_thickness=2)
                 else:
                     draw_text_outline(WIN, f"DASH COOLDOWN: {dash_cooldown:.1f}s", FONT, (200, 200, 200), BLACK, pos=(30, 90), outline_thickness=2)
 
-                # PAUSE
+                # PAUSED screen
                 if state == "PAUSED":
                     overlay = pygame.Surface((WIDTH, HEIGHT))
                     overlay.set_alpha(180)
@@ -475,7 +480,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                     pygame.display.flip()
                     continue
 
-                # WIN / LOSE
+                # WIN / LOSE screen
                 if state in ("WON", "LOST"):
                     overlay = pygame.Surface((WIDTH, HEIGHT))
                     overlay.set_alpha(200)

@@ -102,6 +102,10 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
     carrot_img = pygame.image.load("images/carrot.png").convert_alpha()
     carrot_img = pygame.transform.scale(carrot_img, (CARROT_SIZE, CARROT_SIZE))
 
+    # Traps
+    trap_img = pygame.image.load("images/trap.png").convert_alpha()
+    trap_img = pygame.transform.scale(trap_img, (35, 35))  # <-- adjust size as needed
+
     # Back-to-menu button (used in PAUSED and WON/LOST)
     BACK_IMG = scale_to_width(safe_load_png("images/back_button.png"), 260, smooth=False)
     back_btn = ImageButton(BACK_IMG, (WIDTH // 2, HEIGHT // 2 + 200))
@@ -110,7 +114,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
         reset_world()
 
         player = pygame.Rect(WIDTH // 2, HEIGHT // 2, PLAYER_WIDTH, PLAYER_HEIGHT)
-        bunny = Bunny(player.center, white_square_size=(PLAYER_WIDTH, PLAYER_HEIGHT))
+        bunny = Bunny(player.center, white_square_size=(int(PLAYER_WIDTH * 1.5 * 1.0), int(PLAYER_HEIGHT * 1.0)))
 
         current_coords = (0, 0)
         score = 0
@@ -353,7 +357,8 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
 
             # traps
             for trap in room.get("traps", []):
-                pygame.draw.circle(WIN, (150, 0, 0), (trap.centerx + cx, trap.centery + cy), 20, 5)
+                rect = trap_img.get_rect(center=(trap.centerx + cx, trap.centery + cy))
+                WIN.blit(trap_img, rect)
 
             # carrots
             for carrot in room["carrots"]:

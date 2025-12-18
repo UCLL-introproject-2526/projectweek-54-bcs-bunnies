@@ -18,10 +18,15 @@ def main():
     WIN = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Bunnies Beta v1.0")
 
-    # Fonts
-    FONT = pygame.font.SysFont("pixelfont.ttf", 30, bold=True)
-    BIG_FONT = pygame.font.SysFont("pixelfont.ttf", 48, bold=True)
-    END_FONT = pygame.font.SysFont("pixelfont.ttf", 80, bold=True)
+   # Fonts (load from .ttf file, not SysFont)
+    def load_font(size):
+        try:
+            return pygame.font.Font("font.ttf", size)   # put pixelfont.ttf next to main.py
+        except:
+            return pygame.font.SysFont(None, size, bold=True)  # fallback if file not found  
+    FONT = load_font(30)
+    BIG_FONT = load_font(48)
+    END_FONT = load_font(80) 
 
     # Backgrounds (safe load)
     MENU_BG = safe_load_bg("images/menu_background.png", (30, 120, 80))

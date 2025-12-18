@@ -89,6 +89,17 @@ def _knockback(player: pygame.Rect, source_center, blocks, pixels: int):
 def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.Font) -> str:
     clock = pygame.time.Clock()
 
+        # --- Audio (carrot collect) ---
+    try:
+        if not pygame.mixer.get_init():
+            pygame.mixer.init()
+        carrot_sfx = pygame.mixer.Sound("sounds/carrot.mp3")
+        carrot_sfx.set_volume(0.7)
+    except Exception as e:
+        print("[AUDIO] Carrot sound failed:", e)
+        carrot_sfx = None
+
+
     # ✅ ONLY animation speed (not fox movement)
     FOX_ANIM_DELAY = 0.12  # seconds per frame (bigger = slower)
 
@@ -297,9 +308,14 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 for carrot in room["carrots"][:]:
                     if player.colliderect(carrot):
                         room["carrots"].remove(carrot)
+
+                        if carrot_sfx:
+                            carrot_sfx.play()
+
                         score += 1
                         if score >= TARGET_SCORE:
                             state = "WON"
+
 
             bunny.set_velocity((ix * PLAYER_SPEED, iy * PLAYER_SPEED))
             bunny.update(dt_ms)

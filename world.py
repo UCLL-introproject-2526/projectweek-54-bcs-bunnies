@@ -73,12 +73,13 @@ def generate_room(coords):
         # 2. PICK THEME & LOAD FOLDER IMAGES
         theme_folders = ["grassanddirt", "mudandgloomy", "meadow"]
         selected_theme = random.choice(theme_folders)
+        
+        # FIX: Variable name changed from theme_paths to theme_path to match usages below
         theme_path = os.path.join("images", selected_theme)
 
         bg_image = None
         asset_images = []
 
-        # Scan the chosen folder
         # Scan the chosen folder
         if os.path.exists(theme_path):
             for filename in os.listdir(theme_path):
@@ -95,30 +96,30 @@ def generate_room(coords):
                             fname_lower = filename.lower()
                             
                             if "tree" in fname_lower:
-                                # MAKE TREES BIGGER (e.g., 180x180)
+                                # MAKE TREES BIGGER
                                 img = scale_to_max(img, max_w=180, max_h=180)
                             elif "rock" in fname_lower or "stone" in fname_lower:
-                                # MAKE ROCKS SMALLER (e.g., 60x60)
+                                # MAKE ROCKS SMALLER
                                 img = scale_to_max(img, max_w=60, max_h=60)
                             else:
-                                # BUSHES AND OTHERS (Standard size, e.g., 80x80)
+                                # BUSHES AND OTHERS
                                 img = scale_to_max(img, max_w=80, max_h=80)
                             # --- SCALING LOGIC END ---
                             
                             asset_images.append(img)
-        if not bg_image:
-            bg_image = pygame.Surface((WIDTH, HEIGHT))
-            bg_image.fill((34, 139, 34))  # fallback
         
         # Fallback if no background found
+        if not bg_image:
+            bg_image = pygame.Surface((WIDTH, HEIGHT))
+            bg_image.fill((34, 139, 34))
+        
         bg_color = random.choice(bg_colors)
 
-        # 3. SETUP ROOM ESSENTIALS (Portals, Walls, Safe Zone)
+        # 3. SETUP ROOM ESSENTIALS
         blocks = []
         obstacles = []
         traps = []
         
-        # Keep safe zone for player spawn
         safe_zone = pygame.Rect(WIDTH//2 - 150, HEIGHT//2 - 150, 300, 300)
 
         # Boundary walls
@@ -130,7 +131,6 @@ def generate_room(coords):
         ]
         blocks.extend(walls)
 
-        # -- KEEPING PORTALS EXACTLY AS THEY WERE --
         portals = {
             "top": pygame.Rect(WIDTH//2 - PORTAL_SIZE//2, 0, PORTAL_SIZE, 30),
             "bottom": pygame.Rect(WIDTH//2 - PORTAL_SIZE//2, HEIGHT-30, PORTAL_SIZE, 30),
@@ -138,46 +138,41 @@ def generate_room(coords):
             "right": pygame.Rect(WIDTH-30, HEIGHT//2 - PORTAL_SIZE//2, 30, PORTAL_SIZE),
         }
 
-        # 4. GENERATE OBSTACLES (Using the assets from the folder)
-        # Random generic blocks (optional, you can remove this loop if you only want pictures)
+        # 4. GENERATE OBSTACLES
+        # Random generic blocks (These are the brown squares you see!)
+        # If you ONLY want pictures, you can comment this loop out.
         for _ in range(random.randint(4, 8)):
             bx = (random.randint(2, (WIDTH // BLOCK_SIZE) - 3)) * BLOCK_SIZE
             by = (random.randint(2, (HEIGHT // BLOCK_SIZE) - 3)) * BLOCK_SIZE
             block_rect = pygame.Rect(bx, by, BLOCK_SIZE, BLOCK_SIZE)
-            # Don't block safe zone or portals
+            
             if not block_rect.colliderect(safe_zone) and not any(block_rect.colliderect(p) for p in portals.values()):
                 blocks.append(block_rect)
 
-        # Place the picture assets (Trees/Bushes from folder)
+        # Place the picture assets
         if asset_images:
-            # Try to place 5 to 10 items
             for _ in range(random.randint(5, 10)):
                 img = random.choice(asset_images)
                 
-                # Try 100 times to find a valid spot for this item
                 for attempt in range(100):
                     x = random.randint(60, WIDTH - 60 - img.get_width())
                     y = random.randint(120, HEIGHT - 80 - img.get_height())
                     
-                    # We use "tree" as a generic type for hitboxes
                     ob = make_obstacle(img, x, y, "tree")
                     coll = ob["coll_rect"]
 
-                    # Check collisions
                     if coll.colliderect(safe_zone): continue
                     if any(coll.colliderect(p) for p in portals.values()): continue
                     if any(coll.colliderect(b) for b in blocks): continue
                     if any(coll.colliderect(o["coll_rect"]) for o in obstacles): continue
                     
-                    # If safe, add it
                     obstacles.append(ob)
                     blocks.append(coll)
                     break 
 
-        # 5. ENTITIES (Foxes, Carrots, Traps)
+        # 5. ENTITIES
         foxes = [pygame.Rect(random.randint(100, 300), random.randint(100, 600), FOX_WIDTH, FOX_HEIGHT)]
         
-        # Carrots
         carrots = []
         tries = 0
         while len(carrots) < random.randint(3, 6) and tries < 400:
@@ -231,8 +226,6 @@ def generate_room(coords):
             "fox_anim_timer": [0.0] * len(foxes),
         }
     return room_data[coords]
-
-
 def move_with_collision(rect: pygame.Rect, blocks, dx: float, dy: float):
     rect.x += int(dx)
     for block in blocks:

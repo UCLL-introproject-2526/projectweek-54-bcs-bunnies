@@ -378,7 +378,13 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                     cy = random.randint(-shake_intensity, shake_intensity)
 
                 # ---------------- DRAW ----------------
-                WIN.fill(room["color"])
+                # ---------------- DRAW ----------------
+                
+                # 1. DRAW BACKGROUND (Fixed)
+                if room.get("bg_image"):
+                    WIN.blit(room["bg_image"], (0, 0))
+                else:
+                    WIN.fill(room["color"])
 
                 # portal glow
                 pulse_val = (math.sin(pulse_timer) + 1) / 2
@@ -388,20 +394,32 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                     pygame.draw.ellipse(WIN, WHITE, glow_rect)
                     pygame.draw.ellipse(WIN, glow_color, p_rect.move(cx, cy))
 
-                # blocks
+                # 2. DRAW BLOCKS (Fixed to hide tree hitboxes)
+                # Get a list of all hitboxes that belong to trees/rocks so we don't draw them as squares
+                obstacle_colliders = [o["coll_rect"] for o in room.get("obstacles", [])]
+
+                # 1. Create a set of all hitboxes that belong to images (Trees/Bushes)
+                # We use a set for faster lookup
+                image_hitboxes = []
+                for ob in room.get("obstacles", []):
+                    image_hitboxes.append(ob["coll_rect"])
+
+                # 2. Draw blocks ONLY if they are NOT in that list
                 for block in room["blocks"]:
+                    # If this block is actually a tree's hitbox, SKIP drawing the brown square
+                    if block in image_hitboxes:
+                        continue
+
                     b = block.move(cx, cy)
+                    
+                    # Draw walls (width or height matches screen size)
                     if block.width == WIDTH or block.height == HEIGHT:
                         pygame.draw.rect(WIN, (30, 30, 30), b)
-                    elif room["theme"] == "trees":
-                        pygame.draw.rect(WIN, (80, 50, 20), (b.centerx - 10, b.centery, 20, 40))
-                        pygame.draw.circle(WIN, (20, 100, 20), (b.centerx, b.centery), 40)
-                    elif room["theme"] == "rocks":
-                        pygame.draw.rect(WIN, (100, 100, 100), b, border_radius=20)
                     else:
+                        # Draw generic brown blocks (only if they aren't trees!)
                         pygame.draw.rect(WIN, (139, 69, 19), b)
 
-                # image obstacles
+                # image obstacles (Trees and bushes are drawn here!)
                 for ob in room.get("obstacles", []):
                     WIN.blit(ob["img"], ob["draw_rect"].move(cx, cy))
 

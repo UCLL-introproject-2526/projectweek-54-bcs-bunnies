@@ -89,15 +89,28 @@ def _knockback(player: pygame.Rect, source_center, blocks, pixels: int):
 def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.Font) -> str:
     clock = pygame.time.Clock()
 
-        # --- Audio (carrot collect) ---
+    # --- Audio ---
     try:
         if not pygame.mixer.get_init():
             pygame.mixer.init()
-        carrot_sfx = pygame.mixer.Sound("sounds/carrot.mp3")
-        carrot_sfx.set_volume(0.7)
     except Exception as e:
-        print("[AUDIO] Carrot sound failed:", e)
-        carrot_sfx = None
+        print("[AUDIO] mixer init failed:", e)
+
+    def load_sfx(path, vol=0.8):
+        try:
+            s = pygame.mixer.Sound(path)
+            s.set_volume(vol)
+            print("[AUDIO] loaded:", path)
+            return s
+        except Exception as e:
+            print("[AUDIO] failed to load", path, "->", e)
+            return None
+
+    carrot_sfx = load_sfx("sound/chew.mp3", 0.7)
+    foxkill_sfx = load_sfx("sound/foxkill.mp3", 0.8)
+    beartrap_sfx = load_sfx("sound/beartrap.mp3", 0.8)
+    portal_sfx = load_sfx("sound/portal.mp3", 0.8)
+
 
 
     # ✅ ONLY animation speed (not fox movement)
@@ -227,16 +240,22 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
 
                 for side, p_rect in room["portals"].items():
                     if player.colliderect(p_rect):
+                        if portal_sfx:
+                            portal_sfx.play()
                         is_transitioning = True
                         transition_phase = "out"
                         transition_alpha = 0
                         pending_portal_side = side
                         break
 
+
                 # TRAPS
                 if invuln_timer <= 0 and trap_cooldown <= 0:
                     for trap in room.get("traps", []):
                         if player.colliderect(trap):
+                            if beartrap_sfx:
+                                beartrap_sfx.play()
+
                             lives -= 1
 
                             hit_flash_timer = max(hit_flash_timer, HIT_FLASH_DURATION)
@@ -278,7 +297,10 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         room["fox_frames"][i] = (room["fox_frames"][i] + 1) % len(fox_images)
 
                     if invuln_timer <= 0 and fox.colliderect(player):
+                        if foxkill_sfx:
+                            foxkill_sfx.play()
                         lives -= 1
+
 
                         hit_flash_timer = HIT_FLASH_DURATION
                         shake_timer = SHAKE_DURATION_FOX

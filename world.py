@@ -67,7 +67,7 @@ def generate_room(coords):
 
         blocks = []
         obstacles = []
-        traps = []  # NEW
+        traps = []
 
         safe_zone = pygame.Rect(WIDTH//2 - 150, HEIGHT//2 - 150, 300, 300)
 
@@ -90,11 +90,6 @@ def generate_room(coords):
 
         foxes = [pygame.Rect(random.randint(100, 300),
                              random.randint(100, 600), FOX_WIDTH, FOX_HEIGHT)]
-
-
-        carrot_w, carrot_h = 32, 32  # <-- edit to your image's width/height
-        carrots = [pygame.Rect(random.randint(100, 1100), random.randint(
-        100, 600), 16, 16) for _ in range(random.randint(3, 6))]  # <-- match scaled size
 
         portals = {
             "top": pygame.Rect(WIDTH//2 - PORTAL_SIZE//2, 0, PORTAL_SIZE, 30),
@@ -145,7 +140,33 @@ def generate_room(coords):
         place("tree", tree_scaled, 2)
         place("bush", bush_scaled, 3)
 
-        # --- NEW: traps (red circles) ---
+        # -------------------- CARROTS (FIXED: avoid obstacles/blocks/portals) --------------------
+        carrots = []
+        carrot_count = random.randint(3, 6)
+        tries = 0
+        while len(carrots) < carrot_count and tries < 400:
+            tries += 1
+            cx = random.randint(80, WIDTH - 80)
+            cy = random.randint(120, HEIGHT - 80)
+            carrot = pygame.Rect(cx, cy, 16, 16)
+
+            if carrot.colliderect(safe_zone):
+                continue
+            if any(carrot.colliderect(p) for p in portals.values()):
+                continue
+            if any(carrot.colliderect(b) for b in blocks):
+                continue
+            if any(carrot.colliderect(o["coll_rect"]) for o in obstacles):
+                continue
+            if any(carrot.colliderect(f) for f in foxes):
+                continue
+            if any(carrot.colliderect(c) for c in carrots):
+                continue
+
+            carrots.append(carrot)
+        # ----------------------------------------------------------------------------------------
+
+        # --- traps (red circles) ---
         # These are hazards, NOT walls, so do NOT add them to blocks.
         for _ in range(random.randint(2, 5)):
             tries = 0
@@ -172,17 +193,17 @@ def generate_room(coords):
         room_data[coords] = {
             "blocks": blocks,
             "obstacles": obstacles,
-            "traps": traps,        # NEW
+            "traps": traps,
             "foxes": foxes,
             "carrots": carrots,
             "color": random.choice(bg_colors),
             "theme": theme,
             "portals": portals,
             "name": get_funny_name(),
-            "fox_frames": [0] * len(foxes),  # <-- add here
+            "fox_frames": [0] * len(foxes),
             "fox_directions": [1] * len(foxes),
             "fox_paths": [[] for _ in foxes],
-            
+            "fox_anim_timer": [0.0] * len(foxes),  # ✅ NEW
         }
     return room_data[coords]
 

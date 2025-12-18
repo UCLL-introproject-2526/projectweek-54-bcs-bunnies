@@ -1,5 +1,5 @@
 -add pixel font
--change trap picture
+-change trap picture --DONE--
 -map visuals - maybe remove the randomly generated rooms and just make some rooms and then only when they appear is randoml
 -portal picture for map (maybe purple colored like on our menu picture)
 -make bunny and carrots bigger --DONE--

@@ -89,6 +89,9 @@ def _knockback(player: pygame.Rect, source_center, blocks, pixels: int):
 def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.Font) -> str:
     clock = pygame.time.Clock()
 
+    # ✅ ONLY animation speed (not fox movement)
+    FOX_ANIM_DELAY = 0.12  # seconds per frame (bigger = slower)
+
     # Foxes
     fox_files = sorted(os.listdir("images/fox"))
     fox_images = [pygame.image.load(os.path.join("images/fox", f)).convert_alpha() for f in fox_files]
@@ -104,13 +107,13 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
 
     # Traps
     trap_img = pygame.image.load("images/trap.png").convert_alpha()
-    trap_img = pygame.transform.scale(trap_img, (35, 35))  # <-- adjust size as needed
+    trap_img = pygame.transform.scale(trap_img, (35, 35))
 
-    # Back-to-menu button (used in PAUSED and WON/LOST)
+    # Back-to-menu button
     BACK_IMG = scale_to_width(safe_load_png("images/back_button.png"), 260, smooth=False)
     back_btn = ImageButton(BACK_IMG, (WIDTH // 2, HEIGHT // 2 + 200))
 
-    while True:  # restart loop
+    while True:
         reset_world()
 
         player = pygame.Rect(WIDTH // 2, HEIGHT // 2, PLAYER_WIDTH, PLAYER_HEIGHT)
@@ -170,7 +173,6 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 if event.type == pygame.QUIT:
                     return "quit"
 
-                # ESC toggles pause/resume (not during transition)
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                     if not is_transitioning:
                         if state == "PLAYING":
@@ -178,12 +180,10 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         elif state == "PAUSED":
                             state = "PLAYING"
 
-                # While paused: ENTER resets game
                 if state == "PAUSED" and event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                     state = "RESTART"
                     break
 
-                # While paused: click back = go to menu
                 if state == "PAUSED" and back_btn.clicked(event):
                     return "menu"
 
@@ -196,7 +196,6 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             if state == "PLAYING" and not is_transitioning:
                 keys = pygame.key.get_pressed()
 
-                # input direction
                 if keys[pygame.K_a] or keys[pygame.K_LEFT]:
                     ix = -1.0
                 if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
@@ -206,18 +205,15 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 if keys[pygame.K_s] or keys[pygame.K_DOWN]:
                     iy = 1.0
 
-                # dash (SPACE)
                 if keys[pygame.K_SPACE] and dash_cooldown <= 0 and (ix != 0.0 or iy != 0.0):
                     dash_timer = DASH_DURATION
                     dash_cooldown = DASH_COOLDOWN
 
-                # speed boost milestone
                 speed_boost = SPEED_BOOST_MULT_1 if score >= SPEED_BOOST_SCORE_1 else 1.0
 
                 final_speed = (DASH_SPEED if dash_timer > 0 else PLAYER_SPEED) * speed_boost
                 move_with_collision(player, room["blocks"], ix * final_speed * dt, iy * final_speed * dt)
 
-                # start portal fade
                 for side, p_rect in room["portals"].items():
                     if player.colliderect(p_rect):
                         is_transitioning = True
@@ -264,7 +260,11 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         direction = 1 if fdx > 0 else (-1 if fdx < 0 else room["fox_directions"][i])
                         room["fox_directions"][i] = direction
 
-                    room["fox_frames"][i] = (room["fox_frames"][i] + 1) % len(fox_images)
+                    # ✅ SLOW FOX IMAGE SWITCHING (NOT SPEED)
+                    room["fox_anim_timer"][i] += dt
+                    if room["fox_anim_timer"][i] >= FOX_ANIM_DELAY:
+                        room["fox_anim_timer"][i] = 0.0
+                        room["fox_frames"][i] = (room["fox_frames"][i] + 1) % len(fox_images)
 
                     if invuln_timer <= 0 and fox.colliderect(player):
                         lives -= 1
@@ -287,6 +287,7 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         room["fox_frames"].append(0)
                         room["fox_directions"].append(1)
                         room["fox_paths"].append([])
+                        room["fox_anim_timer"].append(0.0)  # ✅ NEW
 
                         if lives <= 0:
                             state = "LOST"
@@ -300,7 +301,6 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         if score >= TARGET_SCORE:
                             state = "WON"
 
-            # Bunny animation update
             bunny.set_velocity((ix * PLAYER_SPEED, iy * PLAYER_SPEED))
             bunny.update(dt_ms)
             bunny.set_pos(player.center)
@@ -330,7 +330,6 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             # ---------------- DRAW ----------------
             WIN.fill(room["color"])
 
-            # portal glow
             pulse_val = (math.sin(pulse_timer) + 1) / 2
             glow_color = (0, 200 + int(55 * pulse_val), 200 + int(55 * pulse_val))
             for p_rect in room["portals"].values():
@@ -338,7 +337,6 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 pygame.draw.ellipse(WIN, WHITE, glow_rect)
                 pygame.draw.ellipse(WIN, glow_color, p_rect.move(cx, cy))
 
-            # blocks
             for block in room["blocks"]:
                 b = block.move(cx, cy)
                 if block.width == WIDTH or block.height == HEIGHT:
@@ -351,33 +349,27 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 else:
                     pygame.draw.rect(WIN, (139, 69, 19), b)
 
-            # image obstacles
             for ob in room.get("obstacles", []):
                 WIN.blit(ob["img"], ob["draw_rect"].move(cx, cy))
 
-            # traps
             for trap in room.get("traps", []):
                 rect = trap_img.get_rect(center=(trap.centerx + cx, trap.centery + cy))
                 WIN.blit(trap_img, rect)
 
-            # carrots
             for carrot in room["carrots"]:
                 rect = carrot_img.get_rect(center=(carrot.centerx + cx, carrot.centery + cy))
                 WIN.blit(carrot_img, rect)
 
-            # invincibility blink
             blink_hide = False
             if invuln_timer > 0:
                 blink_hide = (pygame.time.get_ticks() // 100) % 2 == 0
 
-            # draw Bunny
             if not blink_hide:
                 base_center = player.center
                 bunny.set_pos((base_center[0] + cx, base_center[1] + cy))
                 bunny.draw(WIN)
                 bunny.set_pos(base_center)
 
-            # foxes
             for i, fox in enumerate(room["foxes"]):
                 img = fox_images[room["fox_frames"][i]]
                 if room["fox_directions"][i] == -1:
@@ -385,7 +377,6 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 rect = img.get_rect(center=(fox.centerx + cx, fox.centery + cy))
                 WIN.blit(img, rect)
 
-            # red flash overlay
             if hit_flash_timer > 0:
                 strength = hit_flash_timer / HIT_FLASH_DURATION
                 alpha = int(HIT_FLASH_MAX_ALPHA * strength)
@@ -393,14 +384,12 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 flash.fill((255, 0, 0, alpha))
                 WIN.blit(flash, (0, 0))
 
-            # transition overlay
             if transition_alpha > 0:
                 o = pygame.Surface((WIDTH, HEIGHT))
                 o.set_alpha(transition_alpha)
                 o.fill((0, 0, 0))
                 WIN.blit(o, (0, 0))
 
-            # UI
             ui = f"Lives: {lives} | Score: {score}/{TARGET_SCORE} | Location: {room['name']}"
             draw_text_outline(WIN, ui, FONT, WHITE, BLACK, pos=(30, 30), outline_thickness=2)
 
@@ -412,7 +401,6 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             else:
                 draw_text_outline(WIN, f"DASH COOLDOWN: {dash_cooldown:.1f}s", FONT, (200, 200, 200), BLACK, pos=(30, 90), outline_thickness=2)
 
-            # PAUSE
             if state == "PAUSED":
                 overlay = pygame.Surface((WIDTH, HEIGHT))
                 overlay.set_alpha(180)
@@ -430,7 +418,6 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 pygame.display.flip()
                 continue
 
-            # WIN / LOSE
             if state in ("WON", "LOST"):
                 overlay = pygame.Surface((WIDTH, HEIGHT))
                 overlay.set_alpha(200)
@@ -459,6 +446,6 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         continue
                     break
 
-                break  # restart
+                break
 
             pygame.display.flip()

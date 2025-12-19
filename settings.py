@@ -1,0 +1,50 @@
+import pygame
+
+# Window
+WIDTH, HEIGHT = 1280, 720
+FPS = 60
+
+# Player / enemies
+PLAYER_WIDTH, PLAYER_HEIGHT = 70, 70
+PLAYER_SPEED = 400
+
+FOX_WIDTH, FOX_HEIGHT = 40, 40
+FOX_SPEED = 190
+
+CARROT_SIZE = 70
+
+# Gameplay
+LIVES_START = 3
+TARGET_SCORE = 15
+
+# World
+BLOCK_SIZE = 80
+PORTAL_SIZE = 70
+
+# UI / Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+
+# Hit / damage flash effect
+HIT_FLASH_DURATION = 0.25   # seconds
+HIT_FLASH_MAX_ALPHA = 120   # 0–255
+
+# Screen shake (Jon-style)
+SHAKE_DURATION_FOX = 0.25
+SHAKE_INTENSITY_FOX = 14
+
+SHAKE_DURATION_TRAP = 0.20
+SHAKE_INTENSITY_TRAP = 10
+
+# Invincibility + knockback
+INVINCIBILITY_DURATION = 3.0
+KNOCKBACK_PIXELS = 70
+
+# ---------------- NEW (from Jon): DASH + SPEED BOOST ----------------
+DASH_SPEED = 1300
+DASH_DURATION = 0.15
+DASH_COOLDOWN = 1.5
+
+# Speed boost milestones (like Jon)
+SPEED_BOOST_SCORE_1 = 5
+SPEED_BOOST_MULT_1 = 1.25

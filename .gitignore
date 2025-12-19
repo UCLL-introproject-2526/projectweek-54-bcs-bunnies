@@ -196,9 +196,7 @@ pyrightconfig.json
 
 *.jpg
 *.jpeg
-*.png
 *.wav
-*.mp3
 *.ogg
 *.midi
 *.zip

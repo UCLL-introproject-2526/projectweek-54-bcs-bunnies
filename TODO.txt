@@ -1,0 +1,8 @@
+-add pixel font --DONE--
+-change trap picture --DONE--
+-map visuals - maybe remove the randomly generated rooms and just make some rooms and then only when they appear is randoml
+-portal picture for map (maybe purple colored like on our menu picture)
+-make bunny and carrots bigger --DONE--
+-carrots shouldnt spawn on the obsticles(for anisa)
+-put everything in an assets folder for the publishing for later
+-a back to menu button instead of restart --DONE--

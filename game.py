@@ -448,18 +448,18 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                 pygame.draw.ellipse(WIN, glow_color, p_rect.move(cx, cy))
 
             for block in room["blocks"]:
-                if block.width == WIDTH or block.height == HEIGHT:
-                    b = block.move(cx, cy)
-                    pygame.draw.rect(WIN, (30, 30, 30), b)
-                elif room["theme"] == "trees":
-                    pygame.draw.rect(WIN, (80, 50, 20),
-                                     (b.centerx - 10, b.centery, 20, 40))
-                    pygame.draw.circle(WIN, (20, 100, 20),
-                                       (b.centerx, b.centery), 40)
-                elif room["theme"] == "rocks":
-                    pygame.draw.rect(WIN, (100, 100, 100), b, border_radius=20)
-                else:
-                    pygame.draw.rect(WIN, (139, 69, 19), b)
+                 if block.width == WIDTH or block.height == HEIGHT:
+                     b = block.move(cx, cy)
+                     pygame.draw.rect(WIN, (30, 30, 30), b)
+                 elif room["theme"] == "trees":
+                     pygame.draw.rect(WIN, (80, 50, 20),
+                                      (b.centerx - 10, b.centery, 20, 40))
+                     pygame.draw.circle(WIN, (20, 100, 20),
+                                        (b.centerx, b.centery), 40)
+                 elif room["theme"] == "rocks":
+                     pygame.draw.rect(WIN, (100, 100, 100), b, border_radius=10)
+                 else:
+                     pygame.draw.rect(WIN, (30, 30, 30), b)
 
             for ob in room.get("obstacles", []):
                 WIN.blit(ob["img"], ob["draw_rect"].move(cx, cy))

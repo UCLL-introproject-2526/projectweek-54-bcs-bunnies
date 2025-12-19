@@ -15,51 +15,6 @@ def get_funny_name() -> str:
 
 room_data = {}
 
-
-def reset_world():
-    room_data.clear()
-
-
-def safe_load_png(path: str):
-    try:
-        return pygame.image.load(path).convert_alpha()
-    except:
-        return None
-
-
-def scale_to_max(img: pygame.Surface, max_w: int, max_h: int) -> pygame.Surface:
-    w, h = img.get_size()
-    if w == 0 or h == 0:
-        return img
-    scale = min(max_w / w, max_h / h)
-    new_size = (max(1, int(w * scale)), max(1, int(h * scale)))
-    return pygame.transform.smoothscale(img, new_size)
-
-
-def make_obstacle(img: pygame.Surface, x: int, y: int, kind: str):
-    draw_rect = img.get_rect(topleft=(x, y))
-
-    if kind == "tree":
-        cw = int(draw_rect.width * 0.55)
-        ch = int(draw_rect.height * 0.35)
-        cx = draw_rect.centerx - cw // 2
-        cy = draw_rect.bottom - ch
-        coll = pygame.Rect(cx, cy, cw, ch)
-    else:
-        cw = int(draw_rect.width * 0.70)
-        ch = int(draw_rect.height * 0.45)
-        cx = draw_rect.centerx - cw // 2
-        cy = draw_rect.bottom - ch
-        coll = pygame.Rect(cx, cy, cw, ch)
-
-    return {"img": img, "draw_rect": draw_rect, "coll_rect": coll, "kind": kind}
-
-
-def theme_index(coords):
-    x, y = coords
-    return abs(x * 31 + y * 17) % 3  # 0..2
-
-
 # --- ADD THIS AT THE TOP OF world.py ---
 
 # ... (keep your existing imports and helper functions like safe_load_png, scale_to_max, make_obstacle) ...
@@ -241,6 +196,47 @@ def generate_room(coords):
             "fox_anim_timer": [0.0] * len(foxes),
         }
     return room_data[coords]
+
+
+def reset_world():
+    room_data.clear()
+
+
+def safe_load_png(path: str):
+    try:
+        return pygame.image.load(path).convert_alpha()
+    except:
+        return None
+
+
+def scale_to_max(img: pygame.Surface, max_w: int, max_h: int) -> pygame.Surface:
+    w, h = img.get_size()
+    if w == 0 or h == 0:
+        return img
+    scale = min(max_w / w, max_h / h)
+    new_size = (max(1, int(w * scale)), max(1, int(h * scale)))
+    return pygame.transform.smoothscale(img, new_size)
+
+
+def make_obstacle(img: pygame.Surface, x: int, y: int, kind: str):
+    draw_rect = img.get_rect(topleft=(x, y))
+
+    if kind == "tree":
+        bbox = img.get_bounding_rect()
+        coll = pygame.Rect(x + bbox.x, y + bbox.y, bbox.width, bbox.height)
+    else:
+        cw = int(draw_rect.width * 0.70)
+        ch = int(draw_rect.height * 0.45)
+        cx = draw_rect.centerx - cw // 2
+        cy = draw_rect.bottom - ch
+        coll = pygame.Rect(cx, cy, cw, ch)
+
+    return {"img": img, "draw_rect": draw_rect, "coll_rect": coll, "kind": kind}
+
+
+def theme_index(coords):
+    x, y = coords
+    return abs(x * 31 + y * 17) % 3  # 0..2
 
 
 def move_with_collision(rect: pygame.Rect, blocks, dx: float, dy: float):

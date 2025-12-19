@@ -141,12 +141,18 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
         portal_sound = pygame.mixer.Sound("sound/portal.mp3")
         portal_sound.set_volume(0.9)
 
+        win_sound = pygame.mixer.Sound("sound/win.mp3")
+        win_sound.set_volume(0.9)
+
+
     except Exception as e:
         print("[AUDIO] Carrot sound failed:", e)
         carrot_sound = None
         beartrap_sound = None
         foxkill_sound = None
         portal_sound = None
+        win_sound = None
+
     # ---------------------------------------------
 
     # Back-to-menu button
@@ -215,6 +221,8 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.mixer.music.stop()
+                    if win_sound:
+                        win_sound.stop()
                     return "quit"
 
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -222,6 +230,8 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         if state == "PLAYING":
                             state = "PAUSED"
                             pygame.mixer.music.pause()
+                            if win_sound:
+                                win_sound.stop()
                         elif state == "PAUSED":
                             state = "PLAYING"
                             pygame.mixer.music.unpause()
@@ -232,6 +242,8 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
 
                 if state == "PAUSED" and back_btn.clicked(event):
                     pygame.mixer.music.stop()
+                    if win_sound:
+                        win_sound.stop()
                     return "menu"
 
             if state == "RESTART":
@@ -388,6 +400,8 @@ def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.
                         if score >= TARGET_SCORE:
                             state = "WON"
                             pygame.mixer.music.stop()
+                            if win_sound:
+                                win_sound.play()
 
             bunny.set_velocity((ix * PLAYER_SPEED, iy * PLAYER_SPEED))
             bunny.update(dt_ms)

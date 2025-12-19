@@ -1,3 +1,18 @@
+from bunny import Bunny
+from world import generate_room, move_with_collision, portal_transition, reset_world
+from ui import draw_text_outline, ImageButton, safe_load_png, scale_to_width
+from settings import (
+    WIDTH, HEIGHT, FPS,
+    PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_SPEED,
+    FOX_SPEED, LIVES_START, TARGET_SCORE,
+    WHITE, BLACK,
+    HIT_FLASH_DURATION, HIT_FLASH_MAX_ALPHA,
+    SHAKE_DURATION_FOX, SHAKE_INTENSITY_FOX,
+    SHAKE_DURATION_TRAP, SHAKE_INTENSITY_TRAP,
+    INVINCIBILITY_DURATION, KNOCKBACK_PIXELS,
+    DASH_SPEED, DASH_DURATION, DASH_COOLDOWN,
+    SPEED_BOOST_SCORE_1, SPEED_BOOST_MULT_1, CARROT_SIZE
+)
 import pygame
 import random
 import math
@@ -12,17 +27,15 @@ def a_star(start, goal, obstacles, cell_size):
 
     def get_neighbors(pos):
         x, y = pos
-        neighbors = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+        neighbors = [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]
         return [
             n for n in neighbors
             if 0 <= n[0] < (WIDTH // cell_size)
             and 0 <= n[1] < (HEIGHT // cell_size)
-            and not any(
-                ob.colliderect(
-                    pygame.Rect(n[0] * cell_size, n[1] * cell_size, cell_size, cell_size)
-                )
-                for ob in obstacles
-            )
+            and not any(ob.colliderect(
+                pygame.Rect(n[0]*cell_size, n[1] *
+                            cell_size, cell_size, cell_size)
+            ) for ob in obstacles)
         ]
 
     start_cell = (int(start[0] // cell_size), int(start[1] // cell_size))
@@ -51,30 +64,11 @@ def a_star(start, goal, obstacles, cell_size):
     path = []
     current = goal_cell
     while current != start_cell:
-        path.append(
-            (current[0] * cell_size + cell_size // 2, current[1] * cell_size + cell_size // 2)
-        )
+        path.append((current[0] * cell_size + cell_size // 2,
+                     current[1] * cell_size + cell_size // 2))
         current = came_from[current]
     path.reverse()
     return path
-
-
-from settings import (
-    WIDTH, HEIGHT, FPS,
-    PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_SPEED,
-    FOX_SPEED, LIVES_START, TARGET_SCORE,
-    WHITE, BLACK,
-    HIT_FLASH_DURATION, HIT_FLASH_MAX_ALPHA,
-    SHAKE_DURATION_FOX, SHAKE_INTENSITY_FOX,
-    SHAKE_DURATION_TRAP, SHAKE_INTENSITY_TRAP,
-    INVINCIBILITY_DURATION, KNOCKBACK_PIXELS,
-    DASH_SPEED, DASH_DURATION, DASH_COOLDOWN,
-    SPEED_BOOST_SCORE_1, SPEED_BOOST_MULT_1, CARROT_SIZE
-)
-
-from ui import draw_text_outline, ImageButton, safe_load_png, scale_to_width
-from world import generate_room, move_with_collision, portal_transition, reset_world
-from bunny import Bunny
 
 
 def _knockback(player: pygame.Rect, source_center, blocks, pixels: int):
@@ -92,461 +86,488 @@ def _knockback(player: pygame.Rect, source_center, blocks, pixels: int):
 
 
 def run_game(WIN: pygame.Surface, FONT: pygame.font.Font, END_FONT: pygame.font.Font) -> str:
-    game_music = None
+    clock = pygame.time.Clock()
+
+    suspense_music = "sound/suspense.mp3"
+
+    # ---------------- GAME MUSIC ----------------
     try:
-        clock = pygame.time.Clock()
+        if not pygame.mixer.get_init():
+            pygame.mixer.init()
 
-        # ---------------- GAME MUSIC (Jazz) ----------------
-        try:
-            if not pygame.mixer.get_init():
-                pygame.mixer.init()
+        pygame.mixer.music.load("sound/jazz.mp3")
+        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.play(-1)  # loop forever
+    except Exception as e:
+        print("[AUDIO] Game music failed:", e)
+    # --------------------------------------------
 
-            game_music = pygame.mixer.Sound("sound/jazz.mp3")
-            game_music.set_volume(0.25)  # LOW volume so SFX are clear
-            game_music.play(loops=-1)
-        except Exception as e:
-            print("[AUDIO] Game music failed:", e)
-            game_music = None
-        # ---------------------------------------------------
+    # ✅ ONLY animation speed (not fox movement)
+    FOX_ANIM_DELAY = 0.12  # seconds per frame (bigger = slower)
 
-        # --- SFX loader ---
-        def load_sfx(path, vol=0.8):
-            try:
-                s = pygame.mixer.Sound(path)
-                s.set_volume(vol)
-                return s
-            except Exception as e:
-                print("[AUDIO] failed to load", path, "->", e)
-                return None
+    # Foxes
+    fox_files = sorted(os.listdir("images/fox"))
+    fox_images = [pygame.image.load(os.path.join(
+        "images/fox", f)).convert_alpha() for f in fox_files]
+    scale_factor = 2
+    fox_images = [
+        pygame.transform.scale(
+            img, (int(img.get_width() * scale_factor), int(img.get_height() * scale_factor)))
+        for img in fox_images
+    ]
 
-        carrot_sfx = load_sfx("sound/chew.mp3", 0.7)
-        foxkill_sfx = load_sfx("sound/foxkill.mp3", 0.8)
-        beartrap_sfx = load_sfx("sound/beartrap.mp3", 0.8)
-        portal_sfx = load_sfx("sound/portal.mp3", 0.8)
+    # Carrots
+    carrot_img = pygame.image.load("images/carrot.png").convert_alpha()
+    carrot_img = pygame.transform.scale(carrot_img, (120, 100))
 
-        # ✅ ONLY animation speed (not fox movement)
-        FOX_ANIM_DELAY = 0.12
+    # Traps
+    trap_img = pygame.image.load("images/trap.png").convert_alpha()
+    trap_img = pygame.transform.scale(trap_img, (35, 35))
 
-        # Fox images
-        fox_files = sorted(os.listdir("images/fox"))
-        fox_images = [pygame.image.load(os.path.join("images/fox", f)).convert_alpha() for f in fox_files]
-        scale_factor = 2
-        fox_images = [
-            pygame.transform.scale(img, (int(img.get_width() * scale_factor), int(img.get_height() * scale_factor)))
-            for img in fox_images
-        ]
+    # ---------------- SOUND EFFECTS ----------------
+    try:
+        if not pygame.mixer.get_init():
+            pygame.mixer.init()
 
-        # Carrot image
-        carrot_img = pygame.image.load("images/carrot.png").convert_alpha()
-        carrot_img = pygame.transform.scale(carrot_img, (CARROT_SIZE, CARROT_SIZE))
+        carrot_sound = pygame.mixer.Sound("sound/chew.mp3")
+        carrot_sound.set_volume(0.7)
 
-        # Trap image
-        trap_img = pygame.image.load("images/trap.png").convert_alpha()
-        trap_img = pygame.transform.scale(trap_img, (35, 35))
+        beartrap_sound = pygame.mixer.Sound("sound/beartrap.mp3")
+        beartrap_sound.set_volume(0.8)
 
-        # Back-to-menu button
-        BACK_IMG = scale_to_width(safe_load_png("images/back_button.png"), 260, smooth=False)
-        back_btn = ImageButton(BACK_IMG, (WIDTH // 2, HEIGHT // 2 + 200))
+        foxkill_sound = pygame.mixer.Sound("sound/foxkill.mp3")
+        foxkill_sound.set_volume(0.8)
+
+        portal_sound = pygame.mixer.Sound("sound/portal.mp3")
+        portal_sound.set_volume(0.9)
+
+        win_sound = pygame.mixer.Sound("sound/win.mp3")
+        win_sound.set_volume(0.9)
 
 
-        #blood
-        damaged=pygame.image.load("images/damage.png").convert_alpha()
-        #damaged2 = pygame.image.load("images/damage3.png").convert_alpha()
-        
+    except Exception as e:
+        print("[AUDIO] Carrot sound failed:", e)
+        carrot_sound = None
+        beartrap_sound = None
+        foxkill_sound = None
+        portal_sound = None
+        win_sound = None
 
+    # ---------------------------------------------
 
+    # Back-to-menu button
+    BACK_IMG = scale_to_width(safe_load_png(
+        "images/back_button.png"), 260, smooth=False)
+    back_btn = ImageButton(BACK_IMG, (WIDTH // 2, HEIGHT // 2 + 200))
+
+    while True:
+        reset_world()
+
+        player = pygame.Rect(WIDTH // 2, HEIGHT // 2,
+                             PLAYER_WIDTH, PLAYER_HEIGHT)
+        bunny = Bunny(player.center, white_square_size=(
+            int(PLAYER_WIDTH * 1.5 * 1.0), int(PLAYER_HEIGHT * 1.0)))
+
+        current_coords = (0, 0)
+        score = 0
+        lives = LIVES_START
+        state = "PLAYING"
+        pulse_timer = 0.0
+
+        # effects
+        hit_flash_timer = 0.0
+        shake_timer = 0.0
+        shake_intensity = 0
+
+        # trap + invincibility
+        trap_cooldown = 0.0
+        invuln_timer = 0.0
+
+        # dash + speed boost
+        dash_timer = 0.0
+        dash_cooldown = 0.0
+        speed_boost = 1.0
+
+        # room transition fade
+        transition_alpha = 0
+        is_transitioning = False
+        transition_phase = "out"
+        pending_portal_side = None
 
         while True:
-            reset_world()
+            dt = clock.tick(FPS) / 1000.0
+            dt_ms = dt * 1000.0
 
-            player = pygame.Rect(WIDTH // 2, HEIGHT // 2, PLAYER_WIDTH, PLAYER_HEIGHT)
-            bunny = Bunny(
-                player.center,
-                white_square_size=(int(PLAYER_WIDTH * 1.5), int(PLAYER_HEIGHT * 1.0))
-            )
+            if state == "PLAYING" and not is_transitioning:
+                pulse_timer += dt * 5.0
 
-            current_coords = (0, 0)
-            score = 0
-            lives = LIVES_START
-            state = "PLAYING"
-            pulse_timer = 0.0
+            room = generate_room(current_coords)
 
-            # effects
-            hit_flash_timer = 0.0
-            shake_timer = 0.0
-            shake_intensity = 0
+            # timers decay
+            if hit_flash_timer > 0:
+                hit_flash_timer = max(0.0, hit_flash_timer - dt)
+            if shake_timer > 0:
+                shake_timer = max(0.0, shake_timer - dt)
+            if trap_cooldown > 0:
+                trap_cooldown = max(0.0, trap_cooldown - dt)
+            if invuln_timer > 0:
+                invuln_timer = max(0.0, invuln_timer - dt)
+            if dash_timer > 0:
+                dash_timer = max(0.0, dash_timer - dt)
+            if dash_cooldown > 0:
+                dash_cooldown = max(0.0, dash_cooldown - dt)
 
-            # trap + invincibility
-            trap_cooldown = 0.0
-            invuln_timer = 0.0
+            # ---------------- EVENTS ----------------
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.mixer.music.stop()
+                    if win_sound:
+                        win_sound.stop()
+                    return "quit"
 
-            # dash + speed boost
-            dash_timer = 0.0
-            dash_cooldown = 0.0
-            speed_boost = 1.0
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    if not is_transitioning:
+                        if state == "PLAYING":
+                            state = "PAUSED"
+                            pygame.mixer.music.pause()
+                            if win_sound:
+                                win_sound.stop()
+                        elif state == "PAUSED":
+                            state = "PLAYING"
+                            pygame.mixer.music.unpause()
 
-            # room transition fade
-            transition_alpha = 0
-            is_transitioning = False
-            transition_phase = "out"
-            pending_portal_side = None
-
-            while True:
-                dt = clock.tick(FPS) / 1000.0
-                dt_ms = dt * 1000.0
-
-                if state == "PLAYING" and not is_transitioning:
-                    pulse_timer += dt * 5.0
-
-                room = generate_room(current_coords)
-
-                # timers decay
-                if hit_flash_timer > 0:
-                    hit_flash_timer = max(0.0, hit_flash_timer - dt)
-                if shake_timer > 0:
-                    shake_timer = max(0.0, shake_timer - dt)
-                if trap_cooldown > 0:
-                    trap_cooldown = max(0.0, trap_cooldown - dt)
-                if invuln_timer > 0:
-                    invuln_timer = max(0.0, invuln_timer - dt)
-                if dash_timer > 0:
-                    dash_timer = max(0.0, dash_timer - dt)
-                if dash_cooldown > 0:
-                    dash_cooldown = max(0.0, dash_cooldown - dt)
-
-                # ---------------- EVENTS ----------------
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        return "quit"
-
-                    if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                        if not is_transitioning:
-                            state = "PAUSED" if state == "PLAYING" else "PLAYING"
-
-                    if state == "PAUSED" and event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.KP_ENTER):
-                        state = "RESTART"
-                        break
-
-                    if state == "PAUSED" and back_btn.clicked(event):
-                        return "menu"
-
-                if state == "RESTART":
+                if state == "PAUSED" and event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    state = "RESTART"
                     break
 
-                # ---------------- UPDATE ----------------
-                ix = iy = 0.0
+                if state == "PAUSED" and back_btn.clicked(event):
+                    pygame.mixer.music.stop()
+                    if win_sound:
+                        win_sound.stop()
+                    return "menu"
 
-                if state == "PLAYING" and not is_transitioning:
-                    keys = pygame.key.get_pressed()
+            if state == "RESTART":
+                break
 
-                    if keys[pygame.K_a] or keys[pygame.K_LEFT]:
-                        ix = -1.0
-                    if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-                        ix = 1.0
-                    if keys[pygame.K_w] or keys[pygame.K_UP]:
-                        iy = -1.0
-                    if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-                        iy = 1.0
+            # ---------------- UPDATE ----------------
+            ix = iy = 0.0
 
-                    if keys[pygame.K_SPACE] and dash_cooldown <= 0 and (ix != 0.0 or iy != 0.0):
-                        dash_timer = DASH_DURATION
-                        dash_cooldown = DASH_COOLDOWN
+            if state == "PLAYING" and not is_transitioning:
+                keys = pygame.key.get_pressed()
 
-                    speed_boost = SPEED_BOOST_MULT_1 if score >= SPEED_BOOST_SCORE_1 else 1.0
+                if keys[pygame.K_a] or keys[pygame.K_LEFT]:
+                    ix = -1.0
+                if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
+                    ix = 1.0
+                if keys[pygame.K_w] or keys[pygame.K_UP]:
+                    iy = -1.0
+                if keys[pygame.K_s] or keys[pygame.K_DOWN]:
+                    iy = 1.0
 
-                    final_speed = (DASH_SPEED if dash_timer > 0 else PLAYER_SPEED) * speed_boost
-                    move_with_collision(player, room["blocks"], ix * final_speed * dt, iy * final_speed * dt)
+                if keys[pygame.K_SPACE] and dash_cooldown <= 0 and (ix != 0.0 or iy != 0.0):
+                    dash_timer = DASH_DURATION
+                    dash_cooldown = DASH_COOLDOWN
 
-                    # portal enter
-                    for side, p_rect in room["portals"].items():
-                        if player.colliderect(p_rect):
-                            if portal_sfx:
-                                portal_sfx.play()
-                            is_transitioning = True
-                            transition_phase = "out"
-                            transition_alpha = 0
-                            pending_portal_side = side
-                            break
+                speed_boost = SPEED_BOOST_MULT_1 if score >= SPEED_BOOST_SCORE_1 else 1.0
 
-                    # TRAPS
-                    if invuln_timer <= 0 and trap_cooldown <= 0:
-                        for trap in room.get("traps", []):
-                            if player.colliderect(trap):
-                                if beartrap_sfx:
-                                    beartrap_sfx.play()
+                final_speed = (DASH_SPEED if dash_timer >
+                               0 else PLAYER_SPEED) * speed_boost
+                move_with_collision(
+                    player, room["blocks"], ix * final_speed * dt, iy * final_speed * dt)
 
-                                lives -= 1
+                for side, p_rect in room["portals"].items():
+                    if player.colliderect(p_rect):
+                        if portal_sound:
+                            portal_sound.play()   # 🔊 PORTAL SOUND
+                        is_transitioning = True
+                        transition_phase = "out"
+                        transition_alpha = 0
+                        pending_portal_side = side
+                        break
 
-                                hit_flash_timer = max(hit_flash_timer, HIT_FLASH_DURATION)
-                                shake_timer = max(shake_timer, SHAKE_DURATION_TRAP)
-                                shake_intensity = max(shake_intensity, SHAKE_INTENSITY_TRAP)
+                # TRAPS
+                if invuln_timer <= 0 and trap_cooldown <= 0:
+                    for trap in room.get("traps", []):
+                        if player.colliderect(trap):
 
-                                invuln_timer = INVINCIBILITY_DURATION
-                                _knockback(player, trap.center, room["blocks"], KNOCKBACK_PIXELS)
-
-                                trap_cooldown = 0.6
-
-                                if lives <= 0:
-                                    state = "LOST"
-                                break
-
-                    # fox AI + collision
-                    for i, fox in enumerate(room["foxes"]):
-                        if len(room["fox_paths"][i]) <= 1 or random.random() < 0.1:
-                            room["fox_paths"][i] = a_star(fox.center, player.center, room["blocks"], BLOCK_SIZE)
-
-                        if room["fox_paths"][i] and len(room["fox_paths"][i]) > 1:
-                            next_pos = room["fox_paths"][i][1]
-                            dx = (next_pos[0] - fox.centerx) / max(1, abs(next_pos[0] - fox.centerx)) * FOX_SPEED * dt
-                            dy = (next_pos[1] - fox.centery) / max(1, abs(next_pos[1] - fox.centery)) * FOX_SPEED * dt
-                            move_with_collision(fox, room["blocks"], dx, dy)
-                            direction = 1 if dx > 0 else (-1 if dx < 0 else room["fox_directions"][i])
-                            room["fox_directions"][i] = direction
-                        else:
-                            fdx = (FOX_SPEED * dt) if fox.x < player.x else (-FOX_SPEED * dt)
-                            fdy = (FOX_SPEED * dt) if fox.y < player.y else (-FOX_SPEED * dt)
-                            move_with_collision(fox, room["blocks"], fdx, fdy)
-                            direction = 1 if fdx > 0 else (-1 if fdx < 0 else room["fox_directions"][i])
-                            room["fox_directions"][i] = direction
-
-                        # slow fox animation
-                        room["fox_anim_timer"][i] += dt
-                        if room["fox_anim_timer"][i] >= FOX_ANIM_DELAY:
-                            room["fox_anim_timer"][i] = 0.0
-                            room["fox_frames"][i] = (room["fox_frames"][i] + 1) % len(fox_images)
-
-                        # fox hits player
-                        if invuln_timer <= 0 and fox.colliderect(player):
-                            if foxkill_sfx:
-                                foxkill_sfx.play()
+                            if beartrap_sound:
+                                beartrap_sound.play()   # 🔊 BEAR TRAP SOUND
 
                             lives -= 1
 
-                            hit_flash_timer = HIT_FLASH_DURATION
-                            shake_timer = SHAKE_DURATION_FOX
-                            shake_intensity = SHAKE_INTENSITY_FOX
+                            hit_flash_timer = max(
+                                hit_flash_timer, HIT_FLASH_DURATION)
+                            shake_timer = max(shake_timer, SHAKE_DURATION_TRAP)
+                            shake_intensity = max(
+                                shake_intensity, SHAKE_INTENSITY_TRAP)
 
                             invuln_timer = INVINCIBILITY_DURATION
-                            _knockback(player, fox.center, room["blocks"], KNOCKBACK_PIXELS)
+                            _knockback(player, trap.center,
+                                       room["blocks"], KNOCKBACK_PIXELS)
 
-                            # spawn new fox
-                            room["foxes"].append(
-                                pygame.Rect(
-                                    random.randint(100, 300),
-                                    random.randint(100, 300),
-                                    fox.width,
-                                    fox.height
-                                )
-                            )
-                            room["fox_frames"].append(0)
-                            room["fox_directions"].append(1)
-                            room["fox_paths"].append([])
-                            room["fox_anim_timer"].append(0.0)
+                            trap_cooldown = 0.6
 
                             if lives <= 0:
                                 state = "LOST"
+                                pygame.mixer.music.stop()
+                                try:
+                                    pygame.mixer.music.load(suspense_music)
+                                    pygame.mixer.music.play(-1)
+                                except Exception as e:
+                                    print("[AUDIO] Suspense music failed:", e)
                             break
 
-                    # carrots
-                    for carrot in room["carrots"][:]:
-                        if player.colliderect(carrot):
-                            room["carrots"].remove(carrot)
-                            if carrot_sfx:
-                                carrot_sfx.play()
-                            score += 1
-                            if score >= TARGET_SCORE:
-                                state = "WON"
-
-                # Bunny animation update
-                bunny.set_velocity((ix * PLAYER_SPEED, iy * PLAYER_SPEED))
-                bunny.update(dt_ms)
-                bunny.set_pos(player.center)
-
-                # ---------------- TRANSITION UPDATE ----------------
-                if is_transitioning and state == "PLAYING":
-                    if transition_phase == "out":
-                        transition_alpha += 15
-                        if transition_alpha >= 255:
-                            transition_alpha = 255
-                            if pending_portal_side is not None:
-                                current_coords = portal_transition(pending_portal_side, current_coords, player)
-                            pending_portal_side = None
-                            transition_phase = "in"
-                    else:
-                        transition_alpha -= 15
-                        if transition_alpha <= 0:
-                            transition_alpha = 0
-                            is_transitioning = False
-
-                # ---------------- SHAKE OFFSET ----------------
-                cx = cy = 0
-                if shake_timer > 0 and shake_intensity > 0:
-                    cx = random.randint(-shake_intensity, shake_intensity)
-                    cy = random.randint(-shake_intensity, shake_intensity)
-
-                # ---------------- DRAW ----------------
-                # ---------------- DRAW ----------------
-                
-                # 1. DRAW BACKGROUND (Fixed)
-                if room.get("bg_image"):
-                    WIN.blit(room["bg_image"], (0, 0))
-                else:
-                    WIN.fill(room["color"])
-
-                # portal glow
-                pulse_val = (math.sin(pulse_timer) + 1) / 2
-                glow_color = (0, 200 + int(55 * pulse_val), 200 + int(55 * pulse_val))
-                for p_rect in room["portals"].values():
-                    glow_rect = p_rect.inflate(int(10 * pulse_val), int(10 * pulse_val)).move(cx, cy)
-                    pygame.draw.ellipse(WIN, WHITE, glow_rect)
-                    pygame.draw.ellipse(WIN, glow_color, p_rect.move(cx, cy))
-
-                # 2. DRAW BLOCKS (Fixed to hide tree hitboxes)
-                # Get a list of all hitboxes that belong to trees/rocks so we don't draw them as squares
-                obstacle_colliders = [o["coll_rect"] for o in room.get("obstacles", [])]
-
-                # 1. Create a set of all hitboxes that belong to images (Trees/Bushes)
-                # We use a set for faster lookup
-                image_hitboxes = []
-                for ob in room.get("obstacles", []):
-                    image_hitboxes.append(ob["coll_rect"])
-
-                # 2. Draw blocks ONLY if they are NOT in that list
-                for block in room["blocks"]:
-                    # If this block is actually a tree's hitbox, SKIP drawing the brown square
-                    if block in image_hitboxes:
-                        continue
-
-                    b = block.move(cx, cy)
-                    
-                    # Draw walls (width or height matches screen size)
-                    if block.width == WIDTH or block.height == HEIGHT:
-                        pygame.draw.rect(WIN, (30, 30, 30), b)
-                    else:
-                        # Draw generic brown blocks (only if they aren't trees!)
-                        pygame.draw.rect(WIN, (139, 69, 19), b)
-
-                # image obstacles (Trees and bushes are drawn here!)
-                for ob in room.get("obstacles", []):
-                    WIN.blit(ob["img"], ob["draw_rect"].move(cx, cy))
-
-                # traps
-                for trap in room.get("traps", []):
-                    rect = trap_img.get_rect(center=(trap.centerx + cx, trap.centery + cy))
-                    WIN.blit(trap_img, rect)
-
-                # carrots
-                for carrot in room["carrots"]:
-                    rect = carrot_img.get_rect(center=(carrot.centerx + cx, carrot.centery + cy))
-                    WIN.blit(carrot_img, rect)
-
-                # invincibility blink
-                blink_hide = False
-                if invuln_timer > 0:
-                    blink_hide = (pygame.time.get_ticks() // 100) % 2 == 0
-
-                # bunny
-                if not blink_hide:
-                    base_center = player.center
-                    bunny.set_pos((base_center[0] + cx, base_center[1] + cy))
-                    bunny.draw(WIN)
-                    bunny.set_pos(base_center)
-
-                # foxes
+                # fox AI
                 for i, fox in enumerate(room["foxes"]):
-                    img = fox_images[room["fox_frames"][i]]
-                    if room["fox_directions"][i] == -1:
-                        img = pygame.transform.flip(img, True, False)
-                    rect = img.get_rect(center=(fox.centerx + cx, fox.centery + cy))
-                    WIN.blit(img, rect)
+                    if len(room["fox_paths"][i]) <= 1 or random.random() < 0.1:
+                        room["fox_paths"][i] = a_star(
+                            fox.center, player.center, room["blocks"], BLOCK_SIZE)
 
-                # red flash overlay
-                if hit_flash_timer > 0:
-                    strength = hit_flash_timer / HIT_FLASH_DURATION
-                    alpha = int(HIT_FLASH_MAX_ALPHA * strength)
-                    flash = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-                    flash.fill((255, 0, 0, alpha))
-                    WIN.blit(flash, (0, 0))
+                    if room["fox_paths"][i] and len(room["fox_paths"][i]) > 1:
+                        next_pos = room["fox_paths"][i][1]
+                        dx = (next_pos[0] - fox.centerx) / max(1,
+                                                               abs(next_pos[0] - fox.centerx)) * FOX_SPEED * dt
+                        dy = (next_pos[1] - fox.centery) / max(1,
+                                                               abs(next_pos[1] - fox.centery)) * FOX_SPEED * dt
+                        move_with_collision(fox, room["blocks"], dx, dy)
+                        direction = 1 if dx > 0 else (-1 if dx <
+                                                      0 else room["fox_directions"][i])
+                        room["fox_directions"][i] = direction
+                    else:
+                        fdx = (FOX_SPEED *
+                               dt) if fox.x < player.x else (-FOX_SPEED * dt)
+                        fdy = (FOX_SPEED *
+                               dt) if fox.y < player.y else (-FOX_SPEED * dt)
+                        move_with_collision(fox, room["blocks"], fdx, fdy)
+                        direction = 1 if fdx > 0 else (-1 if fdx <
+                                                       0 else room["fox_directions"][i])
+                        room["fox_directions"][i] = direction
 
-                # transition overlay
-                if transition_alpha > 0:
-                    o = pygame.Surface((WIDTH, HEIGHT))
-                    o.set_alpha(transition_alpha)
-                    o.fill((0, 0, 0))
-                    WIN.blit(o, (0, 0))
-                
-                if lives == 2:
-                    damaged.set_alpha(85)
-                    WIN.blit(damaged,(0,0))
-                #if lives == 1:
-                 #   damaged2.set_alpha(120)
-                  #  WIN.blit(damaged2,(0,0))
+                    # ✅ SLOW FOX IMAGE SWITCHING (NOT SPEED)
+                    room["fox_anim_timer"][i] += dt
+                    if room["fox_anim_timer"][i] >= FOX_ANIM_DELAY:
+                        room["fox_anim_timer"][i] = 0.0
+                        room["fox_frames"][i] = (
+                            room["fox_frames"][i] + 1) % len(fox_images)
 
-                    
+                    if invuln_timer <= 0 and fox.colliderect(player):
 
-                # UI
-                ui = f"Lives: {lives} | Score: {score}/{TARGET_SCORE} | Location: {room['name']}"
-                draw_text_outline(WIN, ui, FONT, WHITE, BLACK, pos=(30, 30), outline_thickness=2)
+                        if foxkill_sound:
+                            foxkill_sound.play()   # 🔊 FOX HIT SOUND
 
-                if speed_boost > 1.0:
-                    draw_text_outline(WIN, "SNEAKERS ACTIVE", FONT, (0, 255, 0), BLACK, pos=(30, 60), outline_thickness=2)
+                        lives -= 1
 
-                if dash_cooldown <= 0:
-                    draw_text_outline(WIN, "DASH READY (SPACE)", FONT, WHITE, BLACK, pos=(30, 90), outline_thickness=2)
-                else:
-                    draw_text_outline(WIN, f"DASH COOLDOWN: {dash_cooldown:.1f}s", FONT, (200, 200, 200), BLACK, pos=(30, 90), outline_thickness=2)
+                        hit_flash_timer = HIT_FLASH_DURATION
+                        shake_timer = SHAKE_DURATION_FOX
+                        shake_intensity = SHAKE_INTENSITY_FOX
 
-                # PAUSED screen
-                if state == "PAUSED":
-                    overlay = pygame.Surface((WIDTH, HEIGHT))
-                    overlay.set_alpha(180)
-                    overlay.fill((0, 0, 0))
-                    WIN.blit(overlay, (0, 0))
+                        invuln_timer = INVINCIBILITY_DURATION
+                        _knockback(player, fox.center,
+                                   room["blocks"], KNOCKBACK_PIXELS)
 
-                    draw_text_outline(WIN, "PAUSED", END_FONT, WHITE, BLACK,
-                                      center=(WIDTH // 2, HEIGHT // 2 - 60), outline_thickness=4)
-                    draw_text_outline(WIN, "ESC = Resume", FONT, WHITE, BLACK,
-                                      center=(WIDTH // 2, HEIGHT // 2 + 20), outline_thickness=2)
-                    draw_text_outline(WIN, "ENTER = Reset game", FONT, WHITE, BLACK,
-                                      center=(WIDTH // 2, HEIGHT // 2 + 60), outline_thickness=2)
+                        room["foxes"].append(
+                            pygame.Rect(
+                                random.randint(100, 300),
+                                random.randint(100, 300),
+                                fox.width,
+                                fox.height
+                            )
+                        )
+                        room["fox_frames"].append(0)
+                        room["fox_directions"].append(1)
+                        room["fox_paths"].append([])
+                        room["fox_anim_timer"].append(0.0)  # ✅ NEW
 
-                    back_btn.draw(WIN)
-                    pygame.display.flip()
-                    continue
-
-                # WIN / LOSE screen
-                if state in ("WON", "LOST"):
-                    overlay = pygame.Surface((WIDTH, HEIGHT))
-                    overlay.set_alpha(200)
-                    overlay.fill((0, 0, 0))
-                    WIN.blit(overlay, (0, 0))
-
-                    msg = "YOU LOST LIL BRO" if state == "LOST" else "YOU WON CHAMP"
-                    draw_text_outline(WIN, msg, END_FONT, WHITE, BLACK,
-                                      center=(WIDTH // 2, HEIGHT // 2), outline_thickness=4)
-                    draw_text_outline(WIN, "Press ENTER to restart", FONT, WHITE, BLACK,
-                                      center=(WIDTH // 2, HEIGHT // 2 + 90), outline_thickness=2)
-
-                    back_btn.draw(WIN)
-                    pygame.display.flip()
-
-                    while True:
-                        for event in pygame.event.get():
-                            if event.type == pygame.QUIT:
-                                return "quit"
-                            if back_btn.clicked(event):
-                                return "menu"
-                            if event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
-                                break
-                        else:
-                            clock.tick(30)
-                            continue
+                        if lives <= 0:
+                            state = "LOST"
+                            pygame.mixer.music.stop()
+                            try:
+                                pygame.mixer.music.load(suspense_music)
+                                pygame.mixer.music.play(-1)
+                            except Exception as e:
+                                print("[AUDIO] Suspense music failed:", e)
                         break
 
-                    break
+                # carrots
+                for carrot in room["carrots"][:]:
+                    if player.colliderect(carrot):
+                        room["carrots"].remove(carrot)
 
+                        if carrot_sound:
+                            carrot_sound.play()   # 🔊 PLAY SOUND HERE
+
+                        score += 1
+                        if score >= TARGET_SCORE:
+                            state = "WON"
+                            pygame.mixer.music.stop()
+                            if win_sound:
+                                win_sound.play()
+
+            bunny.set_velocity((ix * PLAYER_SPEED, iy * PLAYER_SPEED))
+            bunny.update(dt_ms)
+            bunny.set_pos(player.center)
+
+            # ---------------- TRANSITION UPDATE ----------------
+            if is_transitioning and state == "PLAYING":
+                if transition_phase == "out":
+                    transition_alpha += 15
+                    if transition_alpha >= 255:
+                        transition_alpha = 255
+                        if pending_portal_side is not None:
+                            current_coords = portal_transition(
+                                pending_portal_side, current_coords, player)
+                        pending_portal_side = None
+                        transition_phase = "in"
+                else:
+                    transition_alpha -= 15
+                    if transition_alpha <= 0:
+                        transition_alpha = 0
+                        is_transitioning = False
+
+            # ---------------- SHAKE OFFSET ----------------
+            cx = cy = 0
+            if shake_timer > 0 and shake_intensity > 0:
+                cx = random.randint(-shake_intensity, shake_intensity)
+                cy = random.randint(-shake_intensity, shake_intensity)
+
+            # ---------------- DRAW ----------------
+            if room.get("bg_image"):
+                WIN.blit(room["bg_image"], (0, 0))
+            else:
+                WIN.fill(room["color"])
+
+            # DRAW PORTAL GLOW (Keep this so portals are visible!)
+            pulse_val = (math.sin(pulse_timer) + 1) / 2
+            glow_color = (0, 200 + int(55 * pulse_val),
+                          200 + int(55 * pulse_val))
+
+            for p_rect in room["portals"].values():
+                glow_rect = p_rect.inflate(
+                    int(10 * pulse_val), int(10 * pulse_val)).move(cx, cy)
+                pygame.draw.ellipse(WIN, WHITE, glow_rect)
+                pygame.draw.ellipse(WIN, glow_color, p_rect.move(cx, cy))
+
+            for block in room["blocks"]:
+                if block.width == WIDTH or block.height == HEIGHT:
+                    b = block.move(cx, cy)
+                    pygame.draw.rect(WIN, (30, 30, 30), b)
+                elif room["theme"] == "trees":
+                    pygame.draw.rect(WIN, (80, 50, 20),
+                                     (b.centerx - 10, b.centery, 20, 40))
+                    pygame.draw.circle(WIN, (20, 100, 20),
+                                       (b.centerx, b.centery), 40)
+                elif room["theme"] == "rocks":
+                    pygame.draw.rect(WIN, (100, 100, 100), b, border_radius=20)
+                else:
+                    pygame.draw.rect(WIN, (139, 69, 19), b)
+
+            for ob in room.get("obstacles", []):
+                WIN.blit(ob["img"], ob["draw_rect"].move(cx, cy))
+
+            for trap in room.get("traps", []):
+                rect = trap_img.get_rect(
+                    center=(trap.centerx + cx, trap.centery + cy))
+                WIN.blit(trap_img, rect)
+
+            for carrot in room["carrots"]:
+                offset = math.sin(pygame.time.get_ticks() * 0.005) * 5
+                rect = carrot_img.get_rect(
+                    center=(carrot.centerx + cx, carrot.centery + cy + offset))
+                WIN.blit(carrot_img, rect)
+
+            blink_hide = False
+            if invuln_timer > 0:
+                blink_hide = (pygame.time.get_ticks() // 100) % 2 == 0
+
+            if not blink_hide:
+                base_center = player.center
+                bunny.set_pos((base_center[0] + cx, base_center[1] + cy))
+                bunny.draw(WIN)
+                bunny.set_pos(base_center)
+
+            for i, fox in enumerate(room["foxes"]):
+                img = fox_images[room["fox_frames"][i]]
+                if room["fox_directions"][i] == -1:
+                    img = pygame.transform.flip(img, True, False)
+                rect = img.get_rect(
+                    center=(fox.centerx + cx, fox.centery + cy))
+                WIN.blit(img, rect)
+
+            if hit_flash_timer > 0:
+                strength = hit_flash_timer / HIT_FLASH_DURATION
+                alpha = int(HIT_FLASH_MAX_ALPHA * strength)
+                flash = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+                flash.fill((255, 0, 0, alpha))
+                WIN.blit(flash, (0, 0))
+
+            if transition_alpha > 0:
+                o = pygame.Surface((WIDTH, HEIGHT))
+                o.set_alpha(transition_alpha)
+                o.fill((0, 0, 0))
+                WIN.blit(o, (0, 0))
+
+            ui = f"Lives: {lives} | Score: {score}/{TARGET_SCORE} | Location: {room['name']}"
+            draw_text_outline(WIN, ui, FONT, WHITE, BLACK,
+                              pos=(30, 30), outline_thickness=2)
+
+            if speed_boost > 1.0:
+                draw_text_outline(WIN, "SNEAKERS ACTIVE", FONT, (0, 255, 0), BLACK, pos=(
+                    30, 60), outline_thickness=2)
+
+            if dash_cooldown <= 0:
+                draw_text_outline(WIN, "DASH READY (SPACE)", FONT, (255, 255, 255), BLACK, pos=(
+                    30, 90), outline_thickness=2)
+            else:
+                draw_text_outline(WIN, f"DASH COOLDOWN: {dash_cooldown:.1f}s", FONT, (
+                    200, 200, 200), BLACK, pos=(30, 90), outline_thickness=2)
+
+            if state == "PAUSED":
+                overlay = pygame.Surface((WIDTH, HEIGHT))
+                overlay.set_alpha(180)
+                overlay.fill((0, 0, 0))
+                WIN.blit(overlay, (0, 0))
+
+                draw_text_outline(WIN, "PAUSED", END_FONT, WHITE, BLACK,
+                                  center=(WIDTH // 2, HEIGHT // 2 - 60), outline_thickness=4)
+                draw_text_outline(WIN, "ESC = Resume", FONT, WHITE, BLACK,
+                                  center=(WIDTH // 2, HEIGHT // 2 + 20), outline_thickness=2)
+                draw_text_outline(WIN, "ENTER = Reset game", FONT, WHITE, BLACK,
+                                  center=(WIDTH // 2, HEIGHT // 2 + 60), outline_thickness=2)
+
+                back_btn.draw(WIN)
+                pygame.display.flip()
+                continue
+
+            if state in ("WON", "LOST"):
+                overlay = pygame.Surface((WIDTH, HEIGHT))
+                overlay.set_alpha(200)
+                overlay.fill((0, 0, 0))
+                WIN.blit(overlay, (0, 0))
+
+                msg = "YOU LOST LIL BRO" if state == "LOST" else "YOU WON CHAMP"
+                draw_text_outline(WIN, msg, END_FONT, WHITE, BLACK,
+                                  center=(WIDTH // 2, HEIGHT // 2), outline_thickness=4)
+                draw_text_outline(WIN, "Press ENTER to restart", FONT, WHITE, BLACK,
+                                  center=(WIDTH // 2, HEIGHT // 2 + 90), outline_thickness=2)
+
+                back_btn.draw(WIN)
                 pygame.display.flip()
 
-    finally:
-        if game_music:
-            game_music.stop()
+                while True:
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT:
+                            pygame.mixer.music.stop()
+                            return "quit"
+                        if back_btn.clicked(event):
+                            pygame.mixer.music.stop()
+                            return "menu"
+                        if event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                            break
+                    else:
+                        clock.tick(30)
+                        continue
+                    break
+
+                break
+
+            pygame.display.flip()
